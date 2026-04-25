@@ -427,3 +427,21 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# === UNITY SPECIFIC ===
+/[Uu]nityUI/[Ll]ibrary/
+/[Uu]nityUI/[Tt]emp/
+/[Uu]nityUI/[Oo]bj/
+/[Uu]nityUI/[Bb]uild/
+/[Uu]nityUI/[Ll]ogs/
+/[Uu]nityUI/[Uu]ser[Ss]ettings/
+/[Uu]nityUI/[Mm]emoryCaptures/
+/[Uu]nityUI/PackageCache/
+
+# Unity generated folder
+.collab-ignore
+
+# Unity auto-generated metadata
+/[Uu]nityUI/Assets/AddressableAssetsData/*/*.bin*
+/[Uu]nityUI/Assets/StreamingAssets/aa.meta
+/[Uu]nityUI/Assets/StreamingAssets/aa/*

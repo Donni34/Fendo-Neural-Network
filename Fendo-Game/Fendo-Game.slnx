@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../Logic/Logic.csproj" />
+  <Project Path="../UnityUI/Assembly-CSharp.csproj" />
+</Solution>
