@@ -1,7 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace Fendo.Logic;
-
+﻿namespace Fendo.Logic;
 public class Board
 {
     private bool[,] vertical_borders;
@@ -78,6 +75,7 @@ public class Board
     {
         return board;
     }
+    
     public void UpdateBoard()
     {
         board = new CellState[size, size];
@@ -85,29 +83,54 @@ public class Board
         foreach (var (row, col) in player2) { board[row, col] = CellState.Player2; }
     }
 
-    
-
-    private bool[,] GetVision(CellState player, bool[,] vision)
+    private bool[,] GetVision(bool[,] vision)
     {
-        //opponent womöglich redundant, vielleicht auch benötigt für Logik; alles noch nicht getestet
-        CellState opponent;
-        if (player == CellState.Player1) { opponent = CellState.Player2; }
-        else { opponent = CellState.Player1; }
+        return ObstructedVision(vision, board, 2);
+    }
 
-
-        bool[,] HorizontalVision(bool[,] vision, bool[,] borders)
+    public bool[,] GetVision(CellState player)
+    {
+        bool[,] vision = new bool[size, size];
+        for (int i = 0; i < size; i++)
         {
-            bool[,] new_vision = (bool[,])vision.Clone();
+            for (int j = 0; j < size; j++)
+            {
+                vision[i, j] = board[i, j] == player;
+            }
+        }
+        return GetVision(vision);
+    }
+
+    public bool[,] GetVisionFrom(int row, int col)
+    {
+        CellState player = board[row, col];
+        bool[,] vision = new bool[row, col];
+        if (player == CellState.Empty) { return vision; }
+        return GetVision(vision);
+    }
+
+    private bool[,] ObstructedVision(bool[,] vision, CellState[,]? obstruction = null, int depth = 2)
+    {
+        if (depth == 0) { return vision; }
+
+        obstruction ??= board;
+        CellState[,] obstruction_T = (new Matrix<CellState>(obstruction)).Transpose().GetArray(); 
+
+        bool activity_flag = false;
+
+        bool[,] HorizontalVision(bool[,] vision, CellState[,] obstruction, bool[,] borders)
+        {
+            bool[,] new_vision = new bool[vision.GetLength(0), vision.GetLength(1)];
 
             int block_start = 0;
             bool block_active = false;
-            for (int i = 0; i < this.size; i++) //Vertikal
+            for (int i = 0; i < size; i++) //Vertikal
             {
-                for (int j = 0; j < this.size - 1; j++) //Horizontal
+                for (int j = 0; j < size - 1; j++) //Horizontal
                 {
                     block_active = vision[i, j] || block_active;
 
-                    bool stop_player = block_active && (board[i, j + 1] != CellState.Empty); //fehlerhaft, wenn j=size
+                    bool stop_player = block_active && (obstruction[i, j + 1] != CellState.Empty); //fehlerhaft, wenn j=size
                     bool stop_other = block_active && (j == size - 1 || borders[i, j + 1]);
                     if (stop_player || stop_other)
                     {
@@ -121,57 +144,59 @@ public class Board
             return new_vision;
         }
 
-        bool[,] horizontal_vision = HorizontalVision(vision, vertical_borders);
-        bool[,] vertical_vision = Transpose(HorizontalVision(Transpose(vision), Transpose(horizontal_borders)));
-
-        bool[,] vision_hv = Transpose(HorizontalVision(Transpose(horizontal_vision), Transpose(horizontal_borders)));
-        bool[,] vision_vh = HorizontalVision(vertical_vision, vertical_borders);
-
-        for (int i = 0; i < size; i++)
+        bool[,] Transpose(bool[,] matrix)
         {
-            for (int j = 0; j < size; j++)
-            {
-                vision[i, j] = vision_hv[i, j] || vision_vh[i, j];
-            }
+            Matrix<bool> M = new Matrix<bool>(matrix);
+            M.TransposeInPlace();
+            return M.GetArray();
+        }
+            
+        bool[,] horizontal_vision = vision;
+        bool[,] vertical_vision = vision;
+
+        int k = 0;
+        bool changed = true;
+        while (k < depth && changed)
+        {
+            changed = false;
+            k++;
+
+            bool[,] new_horizontal_vision = HorizontalVision(vision, obstruction, vertical_borders);
+            changed |= activity_flag;
+            activity_flag = false;
+
+            bool[,] new_vertical_vision = Transpose(HorizontalVision(Transpose(vision), obstruction_T, Transpose(horizontal_borders)));
+            changed |= activity_flag;
+            activity_flag = false;
+
+            vertical_vision = new_horizontal_vision;
+            horizontal_vision = new_vertical_vision;
+        }
+
+        for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
+        {
+            vision[i, j] = horizontal_vision[i, j] || vertical_vision[i, j];
         }
         return vision;
     }
 
-    public bool[,] GetVision(CellState player)
-    {
-        bool[,] vision = new bool[size, size];
-        for (int i = 0; i < size; i++)
-        {
-            for (int j = 0; j < size; j++)
-            {
-                vision[i, j] = board[i, j] == player;
-            }
-        }
-        return GetVision(player, vision);
+    private bool[,] UnobstructedVision(bool[,] vision)
+    { 
+        bool[,] new_vision = new bool[size, size];
+        CellState[,] obstruction = new CellState[size, size];
+        return ObstructedVision(vision, obstruction, size^2);
     }
 
-    public bool[,] GetVisionFrom(int row, int col)
+    public bool IsFinished() //prüft, ob Sichtfelder von Spieler 1 und Spieler 2 komplementär sind
     {
-        CellState player = board[row, col];
-        bool[,] vision = new bool[row, col];
-        if (player == CellState.Empty) { return vision; }
-        return GetVision(player, vision);        
-    }
+        bool[,] vision1 = GetVision(CellState.Player1);
+        bool[,] vision2 = GetVision(CellState.Player2);
 
-    public bool[,] Transpose(bool[,] matrix)
-    {
-        int n_line = matrix.GetLength(0); 
-        int n_col = matrix.GetLength(1);
-
-        bool[,] matrix_T = new bool[n_col, n_line];
-
-        for (int i = 0; i < n_line; i++)
+        bool finished = true;
+        for (int i = 0; i < size; i++) for (int j = 0; j<size; j++)
         {
-            for (int j = 0; j < n_col; j++)
-            {
-                matrix_T[j, i] = matrix[i, j];
-            }
+            finished &= vision1[i, j] && !vision2[i, j];
         }
-        return matrix_T;
+        return finished;
     }
 }

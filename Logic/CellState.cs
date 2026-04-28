@@ -7,5 +7,6 @@ public enum CellState : byte
 {
     Empty,
     Player1,
-    Player2
+    Player2,
+    Obstruction
 }
