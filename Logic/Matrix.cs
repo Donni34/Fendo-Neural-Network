@@ -1,56 +1,52 @@
-﻿namespace Fendo.Logic
+﻿namespace Fendo.Logic;
+
+public class Matrix<T>
 {
-    internal class Matrix<T>
+    private int n_row;
+    private int n_col;
+
+    private bool transposed = false;
+
+    private readonly T[,] matrix;
+
+    public Matrix(int n_row, int n_col)
     {
-        int n_row;
-        int n_col;
+        matrix = new T[n_row, n_col];
+    }
 
-        T[,] matrix;
+    public Matrix(T[,] m)
+    {
+        matrix = m;
+        n_row = m.GetLength(0);
+        n_col = m.GetLength(1);
+    }
 
-        public Matrix(int n_row, int n_col)
+    public T this[int i, int j]
+    {
+        get
         {
-            matrix = new T[n_row, n_col];
+            if (transposed) return matrix[j, i];
+            return matrix[i, j];
         }
-
-        public Matrix(T[,] m)
+        set
         {
-            matrix = m;
-            n_row = m.GetLength(0);
-            n_col = m.GetLength(1);
-        }
-
-        public T[,] GetArray() { return matrix; }
-
-        public void SetArray(T[,] matrix)
-        {
-            if (matrix.GetLength(0) == n_row && matrix.GetLength(1) == n_col) this.matrix = matrix;
-            else return;
-        }
-
-        public Matrix<T> Transpose()
-        {
-            T[,] matrix_T = new T[n_col, n_row];
-            for (int i = 0;  i < n_row; i++) for (int j = 0; j < n_col; j++)
-            {
-                matrix_T[j, i] = matrix[i, j];
-            }
-
-            return new Matrix<T>(matrix_T);
-        }
-
-        public void TransposeInPlace()
-        {
-            //quadratische Matrix
-            if (n_row == n_col) for (int i = 0; i < n_row; i++) for (int j = i + 1; j < n_col; j++)
-            {
-                (matrix[i, j], matrix[j, i]) = (matrix[j, i], matrix[i, j]);
-            }
-            //nicht quadratische Matrix
-            else
-            {
-                matrix = Transpose().GetArray();
-                (n_row, n_col) = (n_col, n_row);
-            }
+            if (transposed) matrix[j, i] = value;
+            else matrix[i, j] = value;
         }
     }
+
+    public Matrix<T> Copy()
+    {
+        Matrix<T> M_copy = new Matrix<T>((T[,]) matrix.Clone());
+        if (transposed) M_copy.Transpose();
+        return M_copy;
+    }
+
+    public bool Equals(Matrix <T> comparison_matrix)
+    {
+        return false;
+    }
+
+    public void Transpose() { transposed = !transposed; }
 }
+
