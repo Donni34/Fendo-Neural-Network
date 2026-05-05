@@ -43,7 +43,7 @@ public class Board
     public bool ValidateTurn(Turn turn)
     {
         switch (turn) {
-            case Turn m:
+            case Move m:
                 return ValidateMove(m);
             case Place p:
                 return ValidatePlace(p);
@@ -51,7 +51,7 @@ public class Board
         return false;
     }
 
-    public bool ValidateMove(Turn move)
+    public bool ValidateMove(Move move)
     {
         int row0 = move.row0;
         int row1 = move.row1;
@@ -86,7 +86,7 @@ public class Board
         return ValidateBorderPlacement(move);
     }
 
-    public bool ValidateBorderPlacement(Turn move)
+    public bool ValidateBorderPlacement(Move move)
     {
         int row0 = move.row0;
         int row1 = move.row1;
@@ -198,7 +198,7 @@ public class Board
         {
             if (vision[i,j]) foreach (Border border in Enum.GetValues(typeof(Border)))
             {
-                Turn move = new Turn(row, col, i, j, player, border);
+                Move move = new Move(row, col, i, j, player, border);
                 if (ValidateBorderPlacement(move)) moves.Append(move);
             }
         }

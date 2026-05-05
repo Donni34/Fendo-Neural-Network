@@ -16,12 +16,12 @@ public class Turn
     }
 }
 
-public class Turn : Turn
+public class Move : Turn
 {
     public readonly int row0;
     public readonly int col0;
     public readonly Border border;
-    public Turn(int row0, int col0, int row1, int col1, CellState player, Border border) 
+    public Move(int row0, int col0, int row1, int col1, CellState player, Border border) 
         : base(row1, col1, player)
     {
         this.row0 = row0;
