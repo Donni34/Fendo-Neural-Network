@@ -1,11 +1,14 @@
-﻿namespace Fendo.Logic;
+﻿using Fendo.Logic.enums;
+using System.Drawing;
+using System.Numerics;
+
+namespace Fendo.Logic;
 public class Board
 {
     private Matrix<bool> vertical_borders;
     private Matrix<bool> horizontal_borders;
     private Matrix<CellState> board;
     private int size;
-
     List<(int row, int col)> player1;
     List<(int row, int col)> player2;
 
@@ -36,87 +39,185 @@ public class Board
         UpdateBoard();
     }
 
-    public bool ValidateMove(int row1, int col1, CellState player = CellState.Empty, int? row0 = null, int? col0 = null, char? border = null)
+
+    public bool ValidateTurn(Turn turn)
     {
-        bool is_new = row0 == null || col0 == null;
-        if (player == CellState.Empty && is_new) { return false; }
-        if (is_new && border != null) { return false; }
-
-        if (is_new)
-        {
-            Matrix<bool> vision = GetVision(player);
-            return vision[row1, col1];
+        switch (turn) {
+            case Turn m:
+                return ValidateMove(m);
+            case Place p:
+                return ValidatePlace(p);
         }
-        else
-        {
-            if (row0 != row1 || col0 != col1)
-            {
-                if (board[row1, col1] != CellState.Empty)
-                {
-                    return false;
-                }
-
-            }
-            Matrix<bool> vision = GetVisionFrom(row0.Value, col0.Value);
-            if (!vision[row1, col1]) { return false; }
-
-            Matrix<bool> region;
-            Matrix<bool> complementary_region;
-            switch (border)
-            {
-                case 'n':
-                    if (horizontal_borders[row1 + 1, col1]) return false;
-                    else
-                    {
-                        horizontal_borders[row1 + 1, col1] = true;
-                        region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
-                        complementary_region = GetRegionFrom(row1 + 1, col1, vertical_borders, horizontal_borders);
-                        horizontal_borders[row1 + 1, col1] = false;
-                    }
-                    break;
-                case 'e':
-                    if (vertical_borders[row1, col1 + 1]) return false;
-                    else
-                    {
-                        vertical_borders[row1, col1 + 1] = true;
-                        region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
-                        complementary_region = GetRegionFrom(row1, col1 + 1, vertical_borders, horizontal_borders);
-                        vertical_borders[row1, col1 + 1] = false;
-                    }
-                    break;
-                case 's':
-                    if (horizontal_borders[row1, col1]) return false;
-                    else
-                    {
-                        horizontal_borders[row1, col1] = true;
-                        region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
-                        complementary_region = GetRegionFrom(row1 - 1, col1, vertical_borders, horizontal_borders);
-                        horizontal_borders[row1, col1] = false;
-                    }
-                    break;
-                case 'w':
-                    if (vertical_borders[row1, col1]) return false;
-                    else
-                    {
-                        vertical_borders[row1, col1] = true;
-                        region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
-                        complementary_region = GetRegionFrom(row1, col1 - 1, vertical_borders, horizontal_borders);
-                        vertical_borders[row1, col1] = false;
-                    }
-                    break;
-                default: return false;
-            }
-            bool same_region = true;
-            bool lone_ranger = true;
-            for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
-            {
-                same_region &= region[i, j] && complementary_region[i, j];
-                if (i != row0 && j != col0) lone_ranger &= (board[i, j] == CellState.Empty) && region[i, j];
-                if (!same_region || !lone_ranger) return false;
-            }
-            return true;
-        }
+        return false;
     }
+
+    public bool ValidateMove(Turn move)
+    {
+        int row0 = move.row0;
+        int row1 = move.row1;
+        int col0 = move.col0;
+        int col1 = move.col1;
+        Border border = move.border;
+        CellState player = move.player;
+
+        //check elementary conditions (fast)
+        if (board[row0, col0] != player) return false;
+        if (board[row1, col1] != CellState.Empty) return false;
+        switch (border) {
+            case Border.North:
+                if (horizontal_borders[row1 + 1, col1]) return false;
+                break;
+            case Border.East:
+                if (vertical_borders[row1, col1 + 1]) return false;
+                break;
+            case Border.South:
+                if (horizontal_borders[row1, col1]) return false;
+                break;
+            case Border.West:
+                if (vertical_borders[row1, col1]) return false;
+                break;
+            default: return false;
+        }
+
+        //check complicated conditions (slow)
+        Matrix<bool> vision = GetVisionFrom(row0, col0);
+        if (!vision[row1, col1]) { return false; }
+
+        return ValidateBorderPlacement(move);
+    }
+
+    public bool ValidateBorderPlacement(Turn move)
+    {
+        int row0 = move.row0;
+        int row1 = move.row1;
+        int col0 = move.col0;
+        int col1 = move.col1;
+        Border border = move.border;
+        CellState player = move.player;
+
+        Matrix<bool> region;
+        Matrix<bool> complementary_region;
+        switch (border)
+        {
+            case Border.North:
+                if (horizontal_borders[row1 + 1, col1]) return false;
+                else
+                {
+                    horizontal_borders[row1 + 1, col1] = true;
+                    region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
+                    complementary_region = GetRegionFrom(row1 + 1, col1, vertical_borders, horizontal_borders);
+                    horizontal_borders[row1 + 1, col1] = false;
+                }
+                break;
+            case Border.East:
+                if (vertical_borders[row1, col1 + 1]) return false;
+                else
+                {
+                    vertical_borders[row1, col1 + 1] = true;
+                    region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
+                    complementary_region = GetRegionFrom(row1, col1 + 1, vertical_borders, horizontal_borders);
+                    vertical_borders[row1, col1 + 1] = false;
+                }
+                break;
+            case Border.South:
+                if (horizontal_borders[row1, col1]) return false;
+                else
+                {
+                    horizontal_borders[row1, col1] = true;
+                    region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
+                    complementary_region = GetRegionFrom(row1 - 1, col1, vertical_borders, horizontal_borders);
+                    horizontal_borders[row1, col1] = false;
+                }
+                break;
+            case Border.West:
+                if (vertical_borders[row1, col1]) return false;
+                else
+                {
+                    vertical_borders[row1, col1] = true;
+                    region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
+                    complementary_region = GetRegionFrom(row1, col1 - 1, vertical_borders, horizontal_borders);
+                    vertical_borders[row1, col1] = false;
+                }
+                break;
+            default: return false;
+        }
+        bool same_region = true;
+        bool lone_ranger = true;
+        for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
+        {
+            same_region &= region[i, j] && complementary_region[i, j];
+            if (i != row0 && j != col0) lone_ranger &= (board[i, j] == CellState.Empty) && region[i, j];
+            if (!same_region || !lone_ranger) return false;
+        }
+        return true;
+    }
+
+    public bool ValidatePlace(Place place)
+    {
+        int row1 = place.row1;
+        int col1 = place.col1;
+        CellState player = place.player;
+
+        //check elementary conditions (fast)
+        if (board[row1, col1] != CellState.Empty) return false;
+
+        //check complicated conditions (slow)
+        Matrix<bool> vision = GetVision(player);
+        return vision[row1, col1];
+    }
+
+
+    public List<Turn> GetTurns(CellState player)
+    {
+        List<Turn> turns = new List<Turn>();
+        turns.AddRange(GetMoves(player));
+        turns.AddRange(GetPlaces(player));
+        return turns;
+    }
+
+    public List<Turn> GetMoves(CellState player)
+    {
+        List<Turn> moves = new List<Turn>();
+        if (player != CellState.Player1 || player != CellState.Player2) return moves;
+
+        for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
+        {
+            if (board[i, j] == player) moves.AddRange(GetMovesFrom(i, j));
+        }
+        return moves;
+    }
+
+    public List<Turn> GetMovesFrom(int row, int col)
+    {
+        List<Turn> moves = new List<Turn>();
+        Matrix<bool> vision = GetVisionFrom(row, col);
+        CellState player = board[row, col];
+        if (player != CellState.Player1 || player != CellState.Player2) return moves;
+
+        for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
+        {
+            if (vision[i,j]) foreach (Border border in Enum.GetValues(typeof(Border)))
+            {
+                Turn move = new Turn(row, col, i, j, player, border);
+                if (ValidateBorderPlacement(move)) moves.Append(move);
+            }
+        }
+        return moves;
+    }
+
+    public List<Place> GetPlaces(CellState player)
+    {
+        List<Place> places = new List<Place>();
+        if (player != CellState.Player1 || player != CellState.Player2) return places;
+
+        Matrix<bool> vision = GetVision(player);
+        for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
+        {
+            if (vision[i, j]) places.Append(new Place(i, j, player));
+        }
+        return places;
+    }
+
 
     public Matrix<CellState> GetBoard()
     {
@@ -129,6 +230,7 @@ public class Board
         foreach (var (row, col) in player1) { board[row, col] = CellState.Player1; }
         foreach (var (row, col) in player2) { board[row, col] = CellState.Player2; }
     }
+
 
     private Matrix<bool> GetVision(Matrix<bool> vision)
     {
@@ -226,6 +328,7 @@ public class Board
         Matrix<CellState> obstruction = new Matrix<CellState>(size, size);
         return ObstructedVision(vision, obstruction, size^2, v_borders, h_borders);
     }
+
 
     private Matrix<bool> GetRegionFrom(int row, int col, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
     {
