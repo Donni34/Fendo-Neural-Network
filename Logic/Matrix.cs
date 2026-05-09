@@ -35,6 +35,12 @@ public class Matrix<T>
         }
     }
 
+    public T this[(int i, int j) pos]
+    {
+        get { return this[pos.i, pos.j]; }
+        set { this[pos.i,pos.j] = value; }
+    }
+
     public Matrix<T> Copy()
     {
         Matrix<T> M_copy = new Matrix<T>((T[,]) matrix.Clone());

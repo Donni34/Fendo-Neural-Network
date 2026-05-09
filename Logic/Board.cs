@@ -1,16 +1,13 @@
 ﻿using Fendo.Logic.enums;
-using System.Drawing;
-using System.Numerics;
-
+using System.Runtime.ConstrainedExecution;
+using System.Runtime.InteropServices;
 namespace Fendo.Logic;
 public class Board
 {
-    private Matrix<bool> vertical_borders;
-    private Matrix<bool> horizontal_borders;
-    private Matrix<CellState> board;
-    private int size;
-    List<(int row, int col)> player1;
-    List<(int row, int col)> player2;
+    public Matrix<bool> vertical_borders { get; private set; }
+    public Matrix<bool> horizontal_borders { get; private set; }
+    public Matrix<CellState> board { get; private set; }
+    private readonly int size;
 
     public Board(int size = 7, List<(int row, int col)>? p1 = null, List<(int row, int col)>? p2 = null, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
     {
@@ -21,10 +18,10 @@ public class Board
         for (int i = 0; i < size; i++)
         {
             vertical_borders[i, 0] = true;
-            vertical_borders[i, size + 1] = true;
+            vertical_borders[i, size] = true;
 
-            horizontal_borders[i, 0] = true;
-            horizontal_borders[i, size + 1] = true;
+            horizontal_borders[0, i] = true;
+            horizontal_borders[size, i] = true;
 
         }
         board = new Matrix<CellState>(size, size);
@@ -33,10 +30,8 @@ public class Board
         p1 ??= [(0, 3)];
         p2 ??= [(6, 3)];
 
-        player1 = p1;
-        player2 = p2;
-
-        UpdateBoard();
+        foreach (var p in p1) { board[p] = CellState.Player1; }
+        foreach (var p in p2) { board[p] = CellState.Player2; }
     }
 
 
@@ -51,7 +46,7 @@ public class Board
         return false;
     }
 
-    public bool ValidateMove(Move move)
+    private bool ValidateMove(Move move)
     {
         int row0 = move.row0;
         int row1 = move.row1;
@@ -152,7 +147,7 @@ public class Board
         return true;
     }
 
-    public bool ValidatePlace(Place place)
+    private bool ValidatePlace(Place place)
     {
         int row1 = place.row1;
         int col1 = place.col1;
@@ -219,16 +214,49 @@ public class Board
     }
 
 
-    public Matrix<CellState> GetBoard()
+    public void MakeTurn(Turn turn)
     {
-        return board;
+        if (ValidateTurn(turn)) ForceTurn(turn);
     }
-    
-    public void UpdateBoard()
+
+    public void ForceTurn(Turn turn)
     {
-        board = new Matrix<CellState>(size, size);
-        foreach (var (row, col) in player1) { board[row, col] = CellState.Player1; }
-        foreach (var (row, col) in player2) { board[row, col] = CellState.Player2; }
+        switch (turn) {
+            case Move m: 
+                ForceMove(m);
+                break;
+            case Place p:
+                ForcePlace(p);
+                break;
+        }
+    }
+
+    private void ForceMove(Move move)
+    {
+        int row1 = move.row1;
+        int col1 = move.col1;
+        board[move.row0, move.col0] = CellState.Empty;
+        board[row1, col1] = move.player;
+        switch (move.border)
+        {
+            case Border.North:
+                horizontal_borders[row1 + 1, col1] = true;
+                break;
+            case Border.East:
+                vertical_borders[row1, col1 + 1] = true;
+                break;
+            case Border.South:
+                horizontal_borders[row1, col1] = true;
+                break;
+            case Border.West:
+                vertical_borders[row1, col1] = true;
+                break;
+        }
+    }
+
+    private void ForcePlace(Place place)
+    {
+        board[place.row1, place.col1] = place.player;
     }
 
 
