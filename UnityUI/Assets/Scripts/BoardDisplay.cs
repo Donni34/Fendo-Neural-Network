@@ -105,6 +105,7 @@ public class BoardDisplay : MonoBehaviour
     public void OnCellClicked(int r, int c)
     {
         clicked_cell = (r, c) == clicked_cell ? null : (r, c);
+        Debug.Log($"Logik: Zelle bei {clicked_cell} geklickt.");
         UpdateVisuals();
     }
 

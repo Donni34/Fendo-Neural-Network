@@ -1,6 +1,5 @@
 ﻿using Fendo.Logic.enums;
-using System.Runtime.ConstrainedExecution;
-using System.Runtime.InteropServices;
+using System.Diagnostics;
 namespace Fendo.Logic;
 public class Board
 {
@@ -270,7 +269,7 @@ public class Board
         Matrix<bool> vision = new Matrix<bool>(size, size);
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
-            vision[i, j] = board[i, j] == player;
+            vision[i, j] = (board[i, j] == player);
         }     
         return GetVision(vision);
     }
@@ -295,20 +294,22 @@ public class Board
 
         void HorizontalVision(Matrix<bool> vision, Matrix<CellState> obstruction, Matrix<bool> borders)
         {
-            int block_start = 0;
-            bool block_active = false;
-            for (int i = 0; i < size; i++) for (int j = 0; j < size - 1; j++) //Horizontal
-            {
-                block_active = vision[i, j] || block_active;
-
-                bool stop_player = block_active && (obstruction[i, j + 1] != CellState.Empty); //fehlerhaft, wenn j=size
-                bool stop_other = block_active && (j == size - 1 || borders[i, j + 1]);
-                if (stop_player || stop_other)
-                {
-                    for (int k = block_start; k <= j; k++) { vision[i, k] = true; }
-                    block_active = false;
-                    if (stop_other) { block_start = j + 1; }
-                    if (stop_player) { block_start = j + 2; }
+            for (int i = 0; i < size; i++)
+            { 
+                int block_start = 0;
+                bool block_active = false;
+                for (int j = 0; j < size; j++)
+                {                     
+                    block_active = vision[i, j] || block_active;
+                    bool stop_player = block_active && j<size-1 && obstruction[i, j + 1] != CellState.Empty; 
+                    bool stop_other = block_active && (j == size - 1 || borders[i, j + 1]);
+                    if (stop_player || stop_other)
+                    {
+                        for (int k = block_start; k <= j; k++) { vision[i, k] = true; }
+                        block_active = false;
+                        if (stop_other) { block_start = j + 1; }
+                        if (stop_player) { block_start = j + 2; }
+                    }
                 }
             }
         }
