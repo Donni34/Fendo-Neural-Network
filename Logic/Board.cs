@@ -80,8 +80,9 @@ public class Board
         return ValidateBorderPlacement(move);
     }
 
-    public bool ValidateBorderPlacement(Move move)
+    public bool ValidateBorderPlacement(Move move) //momentan fehlerhaft
     {
+        return true;
         int row0 = move.row0;
         int row1 = move.row1;
         int col0 = move.col0;
@@ -139,9 +140,9 @@ public class Board
         bool lone_ranger = true;
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
-            same_region &= region[i, j] && complementary_region[i, j];
+            same_region &= region[i, j] == complementary_region[i, j];
             if (i != row0 && j != col0) lone_ranger &= (board[i, j] == CellState.Empty) && region[i, j];
-            if (!same_region || !lone_ranger) return false;
+            if (!same_region && !lone_ranger) return false;
         }
         return true;
     }
@@ -213,9 +214,14 @@ public class Board
     }
 
 
-    public void MakeTurn(Turn turn)
+    public bool MakeTurn(Turn turn)
     {
-        if (ValidateTurn(turn)) ForceTurn(turn);
+        if (ValidateTurn(turn))
+        {
+            ForceTurn(turn);
+            return true;
+        }
+        return false;
     }
 
     public void ForceTurn(Turn turn)
@@ -239,13 +245,13 @@ public class Board
         switch (move.border)
         {
             case Border.North:
-                horizontal_borders[row1 + 1, col1] = true;
+                horizontal_borders[row1, col1] = true;
                 break;
             case Border.East:
                 vertical_borders[row1, col1 + 1] = true;
                 break;
             case Border.South:
-                horizontal_borders[row1, col1] = true;
+                horizontal_borders[row1 + 1, col1] = true;
                 break;
             case Border.West:
                 vertical_borders[row1, col1] = true;
@@ -277,8 +283,9 @@ public class Board
     public Matrix<bool> GetVisionFrom(int row, int col)
     {
         CellState player = board[row, col];
-        Matrix<bool> vision = new Matrix<bool>(row, col);
+        Matrix<bool> vision = new Matrix<bool>(size, size);
         if (player == CellState.Empty) { return vision; }
+        vision[row, col] = true;
         return GetVision(vision);
     }
 
@@ -292,7 +299,7 @@ public class Board
 
         bool activity_flag = false;
 
-        void HorizontalVision(Matrix<bool> vision, Matrix<CellState> obstruction, Matrix<bool> borders)
+        void HorizontalVision(Matrix<bool> vision, Matrix<CellState> obstruction, Matrix<bool> borders) //muss optimiert werden, funktioniert aber glaube
         {
             for (int i = 0; i < size; i++)
             { 
@@ -301,14 +308,15 @@ public class Board
                 for (int j = 0; j < size; j++)
                 {                     
                     block_active = vision[i, j] || block_active;
-                    bool stop_player = block_active && j<size-1 && obstruction[i, j + 1] != CellState.Empty; 
-                    bool stop_other = block_active && (j == size - 1 || borders[i, j + 1]);
+                    bool stop_player = j<size-1 && (obstruction[i, j + 1] != CellState.Empty && !vision[i, j + 1]); 
+                    bool stop_other = (j == size - 1 || borders[i, j + 1]);
                     if (stop_player || stop_other)
                     {
-                        for (int k = block_start; k <= j; k++) { vision[i, k] = true; }
+                        if (block_active) for (int k = block_start; k <= j; k++) { vision[i, k] = true; }
                         block_active = false;
                         if (stop_other) { block_start = j + 1; }
                         if (stop_player) { block_start = j + 2; }
+                        activity_flag = true;
                     }
                 }
             }
@@ -324,19 +332,19 @@ public class Board
             changed = false;
             k++;
 
-            HorizontalVision(vision, obstruction, vertical_borders);
+            HorizontalVision(horizontal_vision, obstruction, v_borders);
             changed |= activity_flag;
             activity_flag = false;
 
-            vision.Transpose();
+            vertical_vision.Transpose();
             h_borders.Transpose();
             obstruction.Transpose();
 
-            HorizontalVision(vision, obstruction, horizontal_borders);
+            HorizontalVision(vertical_vision, obstruction, h_borders);
             changed |= activity_flag;
             activity_flag = false;
 
-            vision.Transpose();
+            vertical_vision.Transpose();
             h_borders.Transpose();
             obstruction.Transpose();
 

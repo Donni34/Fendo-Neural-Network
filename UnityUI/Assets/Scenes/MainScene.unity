@@ -242,7 +242,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BoardDisplay
   cellPrefab: {fileID: 5794526123875488804, guid: e39c431b05bca034bbe7cd1142e77936, type: 3}
   wallPrefab: {fileID: 3932350317328615959, guid: bc6cce770cd022441a7385d6c45b8569, type: 3}
-  spacing: 1.1
+  cellWidth: 1
+  wallWidth: 0.2
+  freeSpace: 0.1
 --- !u!4 &1652599228
 Transform:
   m_ObjectHideFlags: 0

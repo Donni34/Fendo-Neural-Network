@@ -5,5 +5,6 @@ public enum Border : byte
     South,
     East,
     West,
+    NaB,
 }
 
