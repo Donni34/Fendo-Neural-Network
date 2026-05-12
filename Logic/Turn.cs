@@ -1,4 +1,4 @@
-﻿using Fendo.Logic.enums;
+﻿using Fendo.Logic;
 
 namespace Fendo.Logic;
 
@@ -6,9 +6,10 @@ public class Turn
 {
     public readonly int row1;
     public readonly int col1;
-    public readonly CellState player;
+    public readonly Player player;
+    public readonly CellState cellstate;
 
-    public Turn(int row1, int col1, CellState player)
+    public Turn(int row1, int col1, Player player)
     {
         this.row1 = row1;
         this.col1 = col1;
@@ -21,7 +22,7 @@ public class Move : Turn
     public readonly int row0;
     public readonly int col0;
     public readonly Border border;
-    public Move(int row0, int col0, int row1, int col1, CellState player, Border border) 
+    public Move(int row0, int col0, int row1, int col1, Player player, Border border) 
         : base(row1, col1, player)
     {
         this.row0 = row0;
@@ -32,5 +33,5 @@ public class Move : Turn
 
 public class Place : Turn
 {
-    public Place(int row1, int col1, CellState player) : base(row1, col1, player) { }
+    public Place(int row1, int col1, Player player) : base(row1, col1, player) { }
 }

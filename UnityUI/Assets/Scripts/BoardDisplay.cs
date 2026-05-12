@@ -1,5 +1,4 @@
 using Fendo.Logic;
-using Fendo.Logic.enums;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
@@ -24,8 +23,7 @@ public class BoardDisplay : MonoBehaviour
 
     private (int, int)? first_cell = null;
     private (int, int)? second_cell = null;
-
-    private CellState player = CellState.Player1;
+    private Player player = Player.One;
     private List<Turn> turns = new List<Turn>();
     private int counter = 0;
     
@@ -114,12 +112,12 @@ public class BoardDisplay : MonoBehaviour
                     colour = vision[i, j] ? Color.green : Color.white;
                     if (first_cell == (i, j))
                     {
-                        if (player == CellState.Player1) colour = Pale(Color.grey);
+                        if (player == Player.One) colour = Pale(Color.grey);
                         else colour = Pale(Color.orange);
                     }
                     else if (second_cell == (i, j))
                     {
-                        if (player == CellState.Player1) colour = Pale(Color.grey);
+                        if (player == Player.One) colour = Pale(Color.grey);
                         else colour = Pale(Color.orange);
                     }
                     break;
@@ -161,7 +159,7 @@ public class BoardDisplay : MonoBehaviour
 
     public void OnCellClicked(int r, int c)
     {
-        if (_logicBoard.board[r, c] == TogglePlayer(player))
+        if (_logicBoard.board[r, c] == player.GetOpponent().ToCellState())
         {
             first_cell = null;
             second_cell = null;
@@ -227,22 +225,11 @@ public class BoardDisplay : MonoBehaviour
         if (_logicBoard.MakeTurn(t))
         {
             turns.Append(t);
-            player = TogglePlayer(player);
+            player = player.GetOpponent();
             counter++;
         }
         first_cell = null;
         second_cell = null;
-    }
-
-  
-    private CellState TogglePlayer(CellState p)
-    {
-        return p switch
-        {
-            CellState.Player1 => CellState.Player2,
-            CellState.Player2 => CellState.Player1,
-            _ => p,
-        };
     }
 
     private void DebugOutput()

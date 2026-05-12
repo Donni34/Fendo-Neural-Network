@@ -1,5 +1,6 @@
-﻿using Fendo.Logic.enums;
+﻿using Fendo.Logic;
 using System.Diagnostics;
+using System.Numerics;
 namespace Fendo.Logic;
 public class Board
 {
@@ -7,6 +8,7 @@ public class Board
     public Matrix<bool> horizontal_borders { get; private set; }
     public Matrix<CellState> board { get; private set; }
     private readonly int size;
+    public byte[] pieces { get; private set; } = new byte[2];
 
     public Board(int size = 7, List<(int row, int col)>? p1 = null, List<(int row, int col)>? p2 = null, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
     {
@@ -29,8 +31,16 @@ public class Board
         p1 ??= [(0, 3)];
         p2 ??= [(6, 3)];
 
-        foreach (var p in p1) { board[p] = CellState.Player1; }
-        foreach (var p in p2) { board[p] = CellState.Player2; }
+        foreach (var p in p1) 
+        { 
+            board[p] = CellState.Player1; 
+            pieces[(int)Player.One]++;
+        }
+        foreach (var p in p2) 
+        { 
+            board[p] = CellState.Player2; 
+            pieces[(int)Player.Two]++;
+        }
     }
 
 
@@ -52,20 +62,20 @@ public class Board
         int col0 = move.col0;
         int col1 = move.col1;
         Border border = move.border;
-        CellState player = move.player;
+        Player player = move.player;
 
         //check elementary conditions (fast)
-        if (board[row0, col0] != player) return false;
-        if (board[row1, col1] != CellState.Empty) return false;
+        if (board[row0, col0] != player.ToCellState()) return false;
+        if (board[row1, col1] != CellState.Empty && !(row0 == row1 && col0 == col1)) return false;
         switch (border) {
             case Border.North:
-                if (horizontal_borders[row1 + 1, col1]) return false;
+                if (horizontal_borders[row1, col1]) return false;
                 break;
             case Border.East:
                 if (vertical_borders[row1, col1 + 1]) return false;
                 break;
             case Border.South:
-                if (horizontal_borders[row1, col1]) return false;
+                if (horizontal_borders[row1 + 1, col1]) return false;
                 break;
             case Border.West:
                 if (vertical_borders[row1, col1]) return false;
@@ -82,26 +92,25 @@ public class Board
 
     public bool ValidateBorderPlacement(Move move) //momentan fehlerhaft
     {
-        return true;
         int row0 = move.row0;
         int row1 = move.row1;
         int col0 = move.col0;
         int col1 = move.col1;
         Border border = move.border;
-        CellState player = move.player;
+        Player player = move.player;
 
         Matrix<bool> region;
         Matrix<bool> complementary_region;
         switch (border)
         {
             case Border.North:
-                if (horizontal_borders[row1 + 1, col1]) return false;
+                if (horizontal_borders[row1, col1]) return false;
                 else
                 {
-                    horizontal_borders[row1 + 1, col1] = true;
+                    horizontal_borders[row1, col1] = true;
                     region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
-                    complementary_region = GetRegionFrom(row1 + 1, col1, vertical_borders, horizontal_borders);
-                    horizontal_borders[row1 + 1, col1] = false;
+                    complementary_region = GetRegionFrom(row1 - 1, col1, vertical_borders, horizontal_borders);
+                    horizontal_borders[row1, col1] = false;
                 }
                 break;
             case Border.East:
@@ -115,13 +124,13 @@ public class Board
                 }
                 break;
             case Border.South:
-                if (horizontal_borders[row1, col1]) return false;
+                if (horizontal_borders[row1 + 1, col1]) return false;
                 else
                 {
-                    horizontal_borders[row1, col1] = true;
+                    horizontal_borders[row1 + 1, col1] = true;
                     region = GetRegionFrom(row1, col1, vertical_borders, horizontal_borders);
-                    complementary_region = GetRegionFrom(row1 - 1, col1, vertical_borders, horizontal_borders);
-                    horizontal_borders[row1, col1] = false;
+                    complementary_region = GetRegionFrom(row1 + 1, col1, vertical_borders, horizontal_borders);
+                    horizontal_borders[row1 + 1, col1] = false;
                 }
                 break;
             case Border.West:
@@ -137,32 +146,36 @@ public class Board
             default: return false;
         }
         bool same_region = true;
-        bool lone_ranger = true;
+        byte inhabitants_region = 0;
+        byte inhabitants_compl = 0;
+        bool proper_move = !(row0 == row1 && col0 == col1);
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
+            if (!(proper_move && i == row0 && j == col0) && 
+                (board[i, j] != CellState.Empty || (i == row1 && j == col1)))
+            {
+                if (region[i, j]) inhabitants_region += 1;
+                if (complementary_region[i ,j]) inhabitants_compl += 1;
+            }
             same_region &= region[i, j] == complementary_region[i, j];
-            if (i != row0 && j != col0) lone_ranger &= (board[i, j] == CellState.Empty) && region[i, j];
-            if (!same_region && !lone_ranger) return false;
+            if (!(same_region || inhabitants_region <= 1 || inhabitants_compl <= 1)) return false;
         }
-        return true;
+        return same_region || inhabitants_region == 1 || inhabitants_compl == 1;
     }
 
     private bool ValidatePlace(Place place)
     {
-        int row1 = place.row1;
-        int col1 = place.col1;
-        CellState player = place.player;
-
         //check elementary conditions (fast)
-        if (board[row1, col1] != CellState.Empty) return false;
+        if (board[place.row1, place.col1] != CellState.Empty) return false;
+        if (pieces[(int)place.player] >= size) return false;
 
         //check complicated conditions (slow)
-        Matrix<bool> vision = GetVision(player);
-        return vision[row1, col1];
+        Matrix<bool> vision = GetVision(place.player);
+        return vision[place.row1, place.col1];
     }
 
 
-    public List<Turn> GetTurns(CellState player)
+    public List<Turn> GetTurns(Player player)
     {
         List<Turn> turns = new List<Turn>();
         turns.AddRange(GetMoves(player));
@@ -170,25 +183,23 @@ public class Board
         return turns;
     }
 
-    public List<Turn> GetMoves(CellState player)
+    public List<Move> GetMoves(Player player)
     {
-        List<Turn> moves = new List<Turn>();
-        if (player != CellState.Player1 || player != CellState.Player2) return moves;
-
+        List<Move> moves = new List<Move>();
+        CellState player_state = player.ToCellState();
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
-            if (board[i, j] == player) moves.AddRange(GetMovesFrom(i, j));
+            if (board[i, j] == player_state) moves.AddRange(GetMovesFrom(i, j));
         }
         return moves;
     }
 
-    public List<Turn> GetMovesFrom(int row, int col)
+    public List<Move> GetMovesFrom(int row, int col)
     {
-        List<Turn> moves = new List<Turn>();
-        Matrix<bool> vision = GetVisionFrom(row, col);
-        CellState player = board[row, col];
-        if (player != CellState.Player1 || player != CellState.Player2) return moves;
+        List<Move> moves = new List<Move>();
+        if (!board[row, col].TryGetPlayer(out Player player)) return moves;
 
+        Matrix<bool> vision = GetVisionFrom(row, col);
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
             if (vision[i,j]) foreach (Border border in Enum.GetValues(typeof(Border)))
@@ -200,11 +211,9 @@ public class Board
         return moves;
     }
 
-    public List<Place> GetPlaces(CellState player)
+    public List<Place> GetPlaces(Player player)
     {
         List<Place> places = new List<Place>();
-        if (player != CellState.Player1 || player != CellState.Player2) return places;
-
         Matrix<bool> vision = GetVision(player);
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
@@ -241,7 +250,7 @@ public class Board
         int row1 = move.row1;
         int col1 = move.col1;
         board[move.row0, move.col0] = CellState.Empty;
-        board[row1, col1] = move.player;
+        board[row1, col1] = move.player.ToCellState();
         switch (move.border)
         {
             case Border.North:
@@ -261,7 +270,8 @@ public class Board
 
     private void ForcePlace(Place place)
     {
-        board[place.row1, place.col1] = place.player;
+        board[place.row1, place.col1] = place.player.ToCellState();
+        pieces[(int)place.player]++;
     }
 
 
@@ -270,21 +280,20 @@ public class Board
         return ObstructedVision(vision, board, 2);
     }
 
-    public Matrix<bool> GetVision(CellState player)
+    public Matrix<bool> GetVision(Player player)
     {
         Matrix<bool> vision = new Matrix<bool>(size, size);
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
-            vision[i, j] = (board[i, j] == player);
+            vision[i, j] = (board[i, j] == player.ToCellState());
         }     
         return GetVision(vision);
     }
 
     public Matrix<bool> GetVisionFrom(int row, int col)
     {
-        CellState player = board[row, col];
         Matrix<bool> vision = new Matrix<bool>(size, size);
-        if (player == CellState.Empty) { return vision; }
+        if (!board[row, col].TryGetPlayer(out Player player)) return vision;
         vision[row, col] = true;
         return GetVision(vision);
     }
@@ -380,13 +389,13 @@ public class Board
 
     public bool IsFinished() //prüft, ob Sichtfelder von Spieler 1 und Spieler 2 komplementär sind
     {
-        Matrix<bool> vision1 = GetVision(CellState.Player1);
-        Matrix<bool> vision2 = GetVision(CellState.Player2);
+        Matrix<bool> vision1 = GetVision(Player.One);
+        Matrix<bool> vision2 = GetVision(Player.Two);
 
         bool finished = true;
         for (int i = 0; i < size; i++) for (int j = 0; j<size; j++)
         {
-            finished &= vision1[i, j] && !vision2[i, j];
+            finished &= vision1[i, j] ^ vision2[i, j];
         }
         return finished;
     }
