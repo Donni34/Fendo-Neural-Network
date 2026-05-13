@@ -90,7 +90,7 @@ public class Board
         return ValidateBorderPlacement(move);
     }
 
-    public bool ValidateBorderPlacement(Move move) //momentan fehlerhaft
+    public bool ValidateBorderPlacement(Move move) 
     {
         int row0 = move.row0;
         int row1 = move.row1;
@@ -145,22 +145,45 @@ public class Board
                 break;
             default: return false;
         }
-        bool same_region = true;
-        byte inhabitants_region = 0;
-        byte inhabitants_compl = 0;
+        //bool same_region = true;
+        //byte inhabitants_region = 0;
+        //byte inhabitants_compl = 0;
+        //bool proper_move = !(row0 == row1 && col0 == col1);
+        //for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
+        //{
+        //    if (!(proper_move && i == row0 && j == col0) && 
+        //        (board[i, j] != CellState.Empty || (i == row1 && j == col1)))
+        //    {
+        //        if (region[i, j]) inhabitants_region += 1;
+        //        if (complementary_region[i ,j]) inhabitants_compl += 1;
+        //    }
+        //    same_region &= region[i, j] == complementary_region[i, j];
+        //    if (!(same_region || inhabitants_region <= 1 || inhabitants_compl <= 1)) return false;
+        //}
+        //return same_region || inhabitants_region == 1 || inhabitants_compl == 1;
+
         bool proper_move = !(row0 == row1 && col0 == col1);
+        bool same_region = true;
+        bool single_region = true;
+        Player owner_region = player;
+        bool single_compl = true;
+        Player? owner_compl = null;
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
-            if (!(proper_move && i == row0 && j == col0) && 
+            if (!(proper_move && i == row0 && j == col0) &&
                 (board[i, j] != CellState.Empty || (i == row1 && j == col1)))
             {
-                if (region[i, j]) inhabitants_region += 1;
-                if (complementary_region[i ,j]) inhabitants_compl += 1;
+                if (region[i, j] && board[i, j] == player.GetOpponent().ToCellState()) single_region = false;
+                if (complementary_region[i,j])
+                {
+                    if (owner_compl is Player p) single_compl &= p.ToCellState() == board[i, j];
+                    else owner_compl = board[i, j].AsPlayer();
+                }
             }
             same_region &= region[i, j] == complementary_region[i, j];
-            if (!(same_region || inhabitants_region <= 1 || inhabitants_compl <= 1)) return false;
+            if (!(same_region || single_region || single_compl)) return false;
         }
-        return same_region || inhabitants_region == 1 || inhabitants_compl == 1;
+        return same_region || (single_region) || (single_compl && owner_compl != null);
     }
 
     private bool ValidatePlace(Place place)
@@ -236,42 +259,32 @@ public class Board
     public void ForceTurn(Turn turn)
     {
         switch (turn) {
-            case Move m: 
-                ForceMove(m);
+            case Move move:
+                int row1 = move.row1;
+                int col1 = move.col1;
+                board[move.row0, move.col0] = CellState.Empty;
+                board[row1, col1] = move.player.ToCellState();
+                switch (move.border)
+                {
+                    case Border.North:
+                        horizontal_borders[row1, col1] = true;
+                        break;
+                    case Border.East:
+                        vertical_borders[row1, col1 + 1] = true;
+                        break;
+                    case Border.South:
+                        horizontal_borders[row1 + 1, col1] = true;
+                        break;
+                    case Border.West:
+                        vertical_borders[row1, col1] = true;
+                        break;
+                }
                 break;
-            case Place p:
-                ForcePlace(p);
-                break;
-        }
-    }
-
-    private void ForceMove(Move move)
-    {
-        int row1 = move.row1;
-        int col1 = move.col1;
-        board[move.row0, move.col0] = CellState.Empty;
-        board[row1, col1] = move.player.ToCellState();
-        switch (move.border)
-        {
-            case Border.North:
-                horizontal_borders[row1, col1] = true;
-                break;
-            case Border.East:
-                vertical_borders[row1, col1 + 1] = true;
-                break;
-            case Border.South:
-                horizontal_borders[row1 + 1, col1] = true;
-                break;
-            case Border.West:
-                vertical_borders[row1, col1] = true;
+            case Place place:
+                board[place.row1, place.col1] = place.player.ToCellState();
+                pieces[(int)place.player]++;
                 break;
         }
-    }
-
-    private void ForcePlace(Place place)
-    {
-        board[place.row1, place.col1] = place.player.ToCellState();
-        pieces[(int)place.player]++;
     }
 
 
@@ -280,15 +293,7 @@ public class Board
         return ObstructedVision(vision, board, 2);
     }
 
-    public Matrix<bool> GetVision(Player player)
-    {
-        Matrix<bool> vision = new Matrix<bool>(size, size);
-        for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
-        {
-            vision[i, j] = (board[i, j] == player.ToCellState());
-        }     
-        return GetVision(vision);
-    }
+    public Matrix<bool> GetVision(Player player) { return GetVision(PlayerToVisionBoard(player)); }
 
     public Matrix<bool> GetVisionFrom(int row, int col)
     {
@@ -312,16 +317,21 @@ public class Board
         {
             for (int i = 0; i < size; i++)
             { 
-                int block_start = 0;
+                int? block_start = null;
                 bool block_active = false;
                 for (int j = 0; j < size; j++)
-                {                     
+                {
                     block_active = vision[i, j] || block_active;
+                    if (block_start == null)
+                    {
+                        if (obstruction[i, j] != CellState.Empty) continue;
+                        else block_start = j;
+                    }
                     bool stop_player = j<size-1 && (obstruction[i, j + 1] != CellState.Empty && !vision[i, j + 1]); 
                     bool stop_other = (j == size - 1 || borders[i, j + 1]);
                     if (stop_player || stop_other)
                     {
-                        if (block_active) for (int k = block_start; k <= j; k++) { vision[i, k] = true; }
+                        if (block_active) for (int k = (int)block_start; k <= j; k++) { vision[i, k] = true; }
                         block_active = false;
                         if (stop_other) { block_start = j + 1; }
                         if (stop_player) { block_start = j + 2; }
@@ -372,7 +382,7 @@ public class Board
         v_borders ??= vertical_borders;
         h_borders ??= horizontal_borders;
         Matrix<CellState> obstruction = new Matrix<CellState>(size, size);
-        return ObstructedVision(vision, obstruction, size^2, v_borders, h_borders);
+        return ObstructedVision(vision, obstruction, size*size, v_borders, h_borders);
     }
 
 
@@ -387,10 +397,24 @@ public class Board
         return region;
     }
 
+    private Matrix<bool> PlayerToVisionBoard(Player player)
+    {
+        Matrix<bool> vision = new Matrix<bool>(size ,size);
+        CellState player_state = player.ToCellState();
+        for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
+        {
+            if (board[i, j] == player_state) vision[i, j] = true;
+        }
+        return vision;
+    }
+
     public bool IsFinished() //prüft, ob Sichtfelder von Spieler 1 und Spieler 2 komplementär sind
     {
-        Matrix<bool> vision1 = GetVision(Player.One);
-        Matrix<bool> vision2 = GetVision(Player.Two);
+        Matrix<bool> vision1 = PlayerToVisionBoard(Player.One);
+        Matrix<bool> vision2 = PlayerToVisionBoard(Player.Two);
+
+        vision1 = UnobstructedVision(vision1, vertical_borders, horizontal_borders);
+        vision2 = UnobstructedVision(vision2, vertical_borders, horizontal_borders);
 
         bool finished = true;
         for (int i = 0; i < size; i++) for (int j = 0; j<size; j++)

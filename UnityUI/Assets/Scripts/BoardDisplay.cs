@@ -230,10 +230,24 @@ public class BoardDisplay : MonoBehaviour
         }
         first_cell = null;
         second_cell = null;
+        if (_logicBoard.IsFinished()) EndGame();
     }
 
     private void DebugOutput()
     {
         Debug.Log($"Player: {player} FirstCell: {first_cell} SecondCell {second_cell}");
+    }
+
+    public void EndGame()
+    {
+        Debug.Log("Spiel beendet. Schließe Anwendung...");
+
+        #if UNITY_EDITOR
+                // Beendet den Play-Modus im Unity Editor
+                UnityEditor.EditorApplication.isPlaying = false;
+        #else
+                // Beendet die tatsächlich gebaute Anwendung (.exe, .app, etc.)
+                Application.Quit();
+        #endif
     }
 }
