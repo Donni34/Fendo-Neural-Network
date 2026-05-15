@@ -159,7 +159,7 @@ public class BoardDisplay : MonoBehaviour
 
     public void OnCellClicked(int r, int c)
     {
-        if (_logicBoard.board[r, c] == player.GetOpponent().ToCellState())
+        if (_logicBoard.board[r, c] == player.Opponent().ToCellState())
         {
             first_cell = null;
             second_cell = null;
@@ -225,7 +225,7 @@ public class BoardDisplay : MonoBehaviour
         if (_logicBoard.MakeTurn(t))
         {
             turns.Append(t);
-            player = player.GetOpponent();
+            player = player.Opponent();
             counter++;
         }
         first_cell = null;

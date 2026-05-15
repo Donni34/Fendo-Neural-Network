@@ -4,13 +4,20 @@ using System.Numerics;
 namespace Fendo.Logic;
 public class Board
 {
+    #region Deklarationen
     public Matrix<bool> vertical_borders { get; private set; }
     public Matrix<bool> horizontal_borders { get; private set; }
     public Matrix<CellState> board { get; private set; }
     private readonly int size;
     public byte[] pieces { get; private set; } = new byte[2];
+    public Player active_player { get; private set; } = Player.One;
 
-    public Board(int size = 7, List<(int row, int col)>? p1 = null, List<(int row, int col)>? p2 = null, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
+    private int? _hash = null;
+    public int Hash { get => _hash ??= board.GetHashCode(); }
+
+    #endregion
+
+    public Board(int size = 7, List<(int row, int col)>? p1 = null, List<(int row, int col)>? p2 = null, Matrix<CellState> b = null, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
     {
         // dimensionen, länge der Listen prüfen
 
@@ -25,7 +32,7 @@ public class Board
             horizontal_borders[size, i] = true;
 
         }
-        board = new Matrix<CellState>(size, size);
+        board = b ?? new Matrix<CellState>(size, size);
         this.size = size;
 
         p1 ??= [(0, 3)];
@@ -43,9 +50,32 @@ public class Board
         }
     }
 
+    #region Verwaltung
+    public Board Copy() { return new Board(size, b: this.board, v_borders: vertical_borders, h_borders: horizontal_borders); }
 
+    public bool EqualTo(Board other_board)
+    {
+        return Hash == other_board.Hash && board==other_board.board;
+    }
+
+    public override bool Equals(object? obj) => obj is Board other && this.EqualTo(other);
+
+    public static bool operator ==(Board? left, Board? right)
+    {
+        return Equals(left, right);
+    }
+
+    public static bool operator !=(Board? left, Board? right)
+    {
+        return !Equals(left, right);
+    }
+
+    #endregion
+
+    #region Turns
     public bool ValidateTurn(Turn turn)
     {
+        if (turn.player != active_player) return false;
         switch (turn) {
             case Move m:
                 return ValidateMove(m);
@@ -173,7 +203,7 @@ public class Board
             if (!(proper_move && i == row0 && j == col0) &&
                 (board[i, j] != CellState.Empty || (i == row1 && j == col1)))
             {
-                if (region[i, j] && board[i, j] == player.GetOpponent().ToCellState()) single_region = false;
+                if (region[i, j] && board[i, j] == player.Opponent().ToCellState()) single_region = false;
                 if (complementary_region[i,j])
                 {
                     if (owner_compl is Player p) single_compl &= p.ToCellState() == board[i, j];
@@ -196,7 +226,7 @@ public class Board
         Matrix<bool> vision = GetVision(place.player);
         return vision[place.row1, place.col1];
     }
-
+ 
 
     public List<Turn> GetTurns(Player player)
     {
@@ -258,6 +288,7 @@ public class Board
 
     public void ForceTurn(Turn turn)
     {
+        active_player = turn.player.Opponent();
         switch (turn) {
             case Move move:
                 int row1 = move.row1;
@@ -285,9 +316,13 @@ public class Board
                 pieces[(int)place.player]++;
                 break;
         }
+
+        //cleanup
+        _hash = null;
     }
+    #endregion
 
-
+    #region Vision
     private Matrix<bool> GetVision(Matrix<bool> vision)
     {
         return ObstructedVision(vision, board, 2);
@@ -423,4 +458,5 @@ public class Board
         }
         return finished;
     }
+    #endregion
 }

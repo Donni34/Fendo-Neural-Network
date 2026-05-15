@@ -4,15 +4,23 @@ public enum CellState : byte
     Empty,
     Player1,
     Player2,
-    Obstruction
+    Obstruction,
+    Player1Sealed, 
+    Player2Sealed,
 }
-
+public enum Border : byte
+{
+    North,
+    South,
+    East,
+    West,
+    NaB,
+}
 public enum Player : byte
 {
     One = 0,
     Two = 1,
 }
-
 public static class PlayerExtensions
 {
     public static Player ToPlayer(this  CellState state)
@@ -54,7 +62,7 @@ public static class PlayerExtensions
         };
     }
 
-    public static Player GetOpponent(this Player player)
+    public static Player Opponent(this Player player)
     {
         return player == Player.One ? Player.Two : Player.One;
     }
@@ -76,12 +84,5 @@ public static class PlayerExtensions
     }
 }
 
-public enum Border : byte
-{
-    North,
-    South,
-    East,
-    West,
-    NaB,
-}
+
 
