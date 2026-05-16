@@ -6,8 +6,8 @@ public class BreadthSearch
 {
     Board board;
     Func<Board, float> EvaluationFunction;
-    Func<List<(Turn, float)>, List<Turn>> PruningFunction;
-    BreadthSearch(Board board, Func<Board, float> EvaluationFunction, Func<List<(Turn, float)>, List<Turn>> PruningFunction)
+    Func<List<(Node, float)>, List<Node>> PruningFunction;
+    BreadthSearch(Board board, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, List<Node>> PruningFunction)
     {
         this.board = board;
         this.EvaluationFunction = EvaluationFunction;
@@ -22,8 +22,8 @@ public class BreadthSearch
 
         for (int i = 0; i < depth; i++)
         {
-            List<Node> new_layer = new List<Node>();
-            foreach(Node node in new_layer)
+            List<Node> new_layer = new();
+            foreach(Node node in search_layers[i])
             {
                 List<Node> new_children = node.MakeChildren();
                 for (int j = 0; j < new_children.Count; j++) foreach(Node child in new_layer)

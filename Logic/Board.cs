@@ -1,14 +1,11 @@
-﻿using Fendo.Logic;
-using System.Diagnostics;
-using System.Numerics;
-namespace Fendo.Logic;
+﻿namespace Fendo.Logic;
 public class Board
 {
     #region Deklarationen
     public Matrix<bool> vertical_borders { get; private set; }
     public Matrix<bool> horizontal_borders { get; private set; }
     public Matrix<CellState> board { get; private set; }
-    private readonly int size;
+    public readonly int size;
     public byte[] pieces { get; private set; } = new byte[2];
     public Player active_player { get; private set; } = Player.One;
 
@@ -17,7 +14,7 @@ public class Board
 
     #endregion
 
-    public Board(int size = 7, List<(int row, int col)>? p1 = null, List<(int row, int col)>? p2 = null, Matrix<CellState> b = null, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
+    public Board(int size = 7, List<(int row, int col)>? p1 = null, List<(int row, int col)>? p2 = null, Matrix<CellState>? b = null, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
     {
         // dimensionen, länge der Listen prüfen
 
@@ -68,6 +65,11 @@ public class Board
     public static bool operator !=(Board? left, Board? right)
     {
         return !Equals(left, right);
+    }
+
+    public override int GetHashCode()
+    {
+        return base.GetHashCode();
     }
 
     #endregion
@@ -421,6 +423,8 @@ public class Board
     }
 
 
+    public Matrix<bool> GetRegion(Player player) { return UnobstructedVision(PlayerToVisionBoard(player)); }
+
     private Matrix<bool> GetRegionFrom(int row, int col, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
     {
         v_borders ??= vertical_borders;
@@ -431,6 +435,7 @@ public class Board
         Matrix<bool> region = UnobstructedVision(vision, v_borders, h_borders);
         return region;
     }
+
 
     private Matrix<bool> PlayerToVisionBoard(Player player)
     {

@@ -8,12 +8,12 @@ public class Node
     public readonly Turn? turn;
 
     Func<Board, float> EvaluationFunction;
-    Func<List<(Turn, float)>, List<Turn>> PruningFunction;
+    Func<List<(Node, float)>, List<Node>> PruningFunction;
 
     public List<Node> children = new List<Node>();
     private float? score = null;
 
-    public Node(Board board, Turn? turn, Func<Board, float> EvaluationFunction, Func<List<(Turn, float)>, List<Turn>> PruningFunction)
+    public Node(Board board, Turn? turn, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, List<Node>> PruningFunction)
     {
         this.board = board;
         this.turn = turn;
@@ -24,17 +24,17 @@ public class Node
 
     public List<Node> MakeChildren()
     {
-        List<(Turn turn, float score)> scored_turns = board.GetTurns(board.active_player)
-            .Select(t => (t, 0f))
-            .ToList();
-        List<Turn> turns = PruningFunction(scored_turns);
-        List<Node> children = new List<Node>();
+        List<Turn> turns = board.GetTurns(board.active_player);
+        List<(Node n, float s)> scored_nodes = new List<(Node n, float s)>();
         foreach (var turn in turns)
         {
             Board new_board = board.Copy();
             new_board.ForceTurn(turn);
-            children.Add(new Node(new_board, turn, EvaluationFunction, PruningFunction));
+            Node n = new Node(new_board, turn, EvaluationFunction, PruningFunction);
+            float s = n.Score();
+            scored_nodes.Add((n, s));
         }
+        List<Node> children = PruningFunction(scored_nodes);
         this.children = children;
         return children;
     }
