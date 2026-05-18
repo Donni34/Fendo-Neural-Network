@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Engine/Engine.csproj" Id="a72c96f7-96be-4b6f-8e8d-00593b822f3c" />
   <Project Path="Logic/Logic.csproj" />
+  <Project Path="Testing/Testing.csproj" Id="7b73b32d-0586-4f86-aeb3-bea3ddff913d" />
   <Project Path="UnityUI/UnityUI.csproj" />
 </Solution>
