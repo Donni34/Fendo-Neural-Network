@@ -48,7 +48,7 @@ public class Board
     }
 
     #region Verwaltung
-    public Board Copy() { return new Board(size, b: this.board, v_borders: vertical_borders, h_borders: horizontal_borders); }
+    public Board Copy() { return new Board(size, b: board.Copy(), v_borders: vertical_borders.Copy(), h_borders: horizontal_borders.Copy()); }
 
     public bool EqualTo(Board other_board)
     {
@@ -67,10 +67,7 @@ public class Board
         return !Equals(left, right);
     }
 
-    public override int GetHashCode()
-    {
-        return base.GetHashCode();
-    }
+    public override int GetHashCode() { return Hash; }
 
     #endregion
 
@@ -240,7 +237,7 @@ public class Board
 
     public List<Move> GetMoves(Player player)
     {
-        List<Move> moves = new List<Move>();
+        List<Move> moves = new();
         CellState player_state = player.ToCellState();
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
@@ -260,7 +257,7 @@ public class Board
             if (vision[i,j]) foreach (Border border in Enum.GetValues(typeof(Border)))
             {
                 Move move = new Move(row, col, i, j, player, border);
-                if (ValidateBorderPlacement(move)) moves.Append(move);
+                if (ValidateBorderPlacement(move)) moves.Add(move);
             }
         }
         return moves;
@@ -272,7 +269,7 @@ public class Board
         Matrix<bool> vision = GetVision(player);
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++)
         {
-            if (vision[i, j]) places.Append(new Place(i, j, player));
+            if (vision[i, j]) places.Add(new Place(i, j, player));
         }
         return places;
     }

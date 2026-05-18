@@ -7,7 +7,7 @@ public class Matrix<T>
 
     private bool transposed = false;
 
-    private readonly T[,] matrix;
+    private T[,] matrix;
 
     public int rows => transposed ? n_col : n_row;
     public int cols => transposed ? n_row : n_col;
@@ -59,7 +59,7 @@ public class Matrix<T>
         if (!(comparison_matrix.rows == n_row && comparison_matrix.cols == n_col)) return false;
         for (int i = 0; i < n_row; i++) for (int j = 0; j < n_col; j++)
         {
-            if (!this[i, j].Equals(comparison_matrix[i, j])) return false;
+            if (!this[i, j]!.Equals(comparison_matrix[i, j])) return false;
         }
         return true;
     }

@@ -4,17 +4,17 @@ namespace Fendo.Engine;
 
 public static class Heuristics
 {
-    public static float VisionBasedEvaluation(Board board, float weight_vision, float weight_region)
+    public static float VisionBasedEvaluation(Board board, Func<int, float> weight_vision, Func<int, float> weight_region)
     {
         Matrix<bool> vision1 = board.GetVision(Player.One);
         Matrix<bool> vision2 = board.GetVision(Player.Two);
         Matrix<bool> region1 = board.GetRegion(Player.One);
         Matrix<bool> region2 = board.GetRegion(Player.Two);
 
-        float count_vision1 = 0;
-        float count_vision2 = 0;
-        float count_region1 = 0;
-        float count_region2 = 0;
+        int count_vision1 = 0;
+        int count_vision2 = 0;
+        int count_region1 = 0;
+        int count_region2 = 0;
 
         for (int i = 0; i < board.size; i++) for (int j = 0; j < board.size; j++)
         {
@@ -24,7 +24,7 @@ public static class Heuristics
             else if (vision2[i, j]) count_vision2++;
         }
 
-        float score = weight_vision*(count_vision1 - count_vision2) + weight_region*(count_region1 - count_region2);
+        float score = weight_vision(count_vision1) - weight_vision(count_vision2) + weight_region(count_region1) - weight_region(count_region2);
         return score;
     }
 

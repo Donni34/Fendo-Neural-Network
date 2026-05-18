@@ -10,32 +10,36 @@ public class Node
     Func<Board, float> EvaluationFunction;
     Func<List<(Node, float)>, List<Node>> PruningFunction;
 
+    public readonly int? depth = null;
     public List<Node> children = new List<Node>();
     private float? score = null;
 
-    public Node(Board board, Turn? turn, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, List<Node>> PruningFunction)
+    public Node(Board board, Turn? turn, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, List<Node>> PruningFunction, int? depth = null)
     {
         this.board = board;
         this.turn = turn;
 
         this.EvaluationFunction = EvaluationFunction;
         this.PruningFunction = PruningFunction;
+        this.depth = depth;
     }
 
     public List<Node> MakeChildren()
     {
         List<Turn> turns = board.GetTurns(board.active_player);
         List<(Node n, float s)> scored_nodes = new List<(Node n, float s)>();
+        Func<Board, float> child_eval = board => -EvaluationFunction(board);
         foreach (var turn in turns)
         {
             Board new_board = board.Copy();
             new_board.ForceTurn(turn);
-            Node n = new Node(new_board, turn, EvaluationFunction, PruningFunction);
+            Node n = new Node(new_board, turn, child_eval, PruningFunction, depth: depth+1);
             float s = n.Score();
             scored_nodes.Add((n, s));
         }
         List<Node> children = PruningFunction(scored_nodes);
         this.children = children;
+        score = null;
         return children;
     }
 
@@ -47,12 +51,14 @@ public class Node
     public float Score()
     {
         if (score is float s) return s;
-        if (children.Count == 0) return EvaluationFunction(board);
-
-        float max = -10000;
-        foreach (var node in children) max = Math.Max(max, -node.Score());
-        score = max;
-        return max;
+        if (children.Count == 0) score = EvaluationFunction(board); 
+        else
+        {
+            float max = -10000;
+            foreach (var node in children) max = Math.Max(max, node.Score());
+            score = max;
+        }
+        return (float)score;
     }
 
     public Node BestChild()
@@ -75,7 +81,7 @@ public class Node
 
     public override int GetHashCode()
     {
-        return base.GetHashCode();
+        return board.GetHashCode();
     }
     #endregion
 }
