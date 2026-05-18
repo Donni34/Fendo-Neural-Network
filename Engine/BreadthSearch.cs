@@ -8,8 +8,8 @@ public class BreadthSearch
 {
     Board board;
     Func<Board, float> EvaluationFunction;
-    Func<List<(Node, float)>, List<Node>> PruningFunction;
-    public BreadthSearch(Board board, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, List<Node>> PruningFunction)
+    Func<List<(Node, float)>, int, List<Node>> PruningFunction;
+    public BreadthSearch(Board board, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, int, List<Node>> PruningFunction)
     {
         this.board = board;
         this.EvaluationFunction = EvaluationFunction;
@@ -32,7 +32,7 @@ public class BreadthSearch
                 List<Node> new_children = node.MakeChildren();
                 if (new_layer.Count == 0)
                 {
-                    new_layer = new_children;
+                    new_layer.AddRange(new_children);
                     continue;
                 }
                 bool copy;

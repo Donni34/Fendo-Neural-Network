@@ -355,17 +355,16 @@ public class Board
                 bool block_active = false;
                 for (int j = 0; j < size; j++)
                 {
-                    block_active = vision[i, j] || block_active;
-                    if (block_start == null)
-                    {
-                        if (obstruction[i, j] != CellState.Empty) continue;
-                        else block_start = j;
-                    }
+                    block_active |= vision[i, j];
+                    if (block_start == null && (obstruction[i, j] == CellState.Empty 
+                        || vision[i, j])) 
+                        block_start = j;
+
                     bool stop_player = j<size-1 && (obstruction[i, j + 1] != CellState.Empty && !vision[i, j + 1]); 
                     bool stop_other = (j == size - 1 || borders[i, j + 1]);
                     if (stop_player || stop_other)
                     {
-                        if (block_active) for (int k = (int)block_start; k <= j; k++) { vision[i, k] = true; }
+                        if (block_active && block_start != null) for (int k = (int)block_start; k <= j; k++) { vision[i, k] = true; }
                         block_active = false;
                         if (stop_other) { block_start = j + 1; }
                         if (stop_player) { block_start = j + 2; }

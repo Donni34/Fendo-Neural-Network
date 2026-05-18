@@ -1,3 +1,4 @@
+using Fendo.Engine;
 using Fendo.Logic;
 using System.Collections.Generic;
 using System.Linq;
@@ -86,6 +87,7 @@ public class BoardDisplay : MonoBehaviour
 
     public void UpdateVisuals()
     {
+        Debug.Log($"Aktuelle Bewertung: {Heuristics.BasicEval(_logicBoard)}");
         Matrix<bool> vision = first_cell is (int r, int c) ? _logicBoard.GetVisionFrom(r, c) : _logicBoard.GetVision(player);
         Matrix<CellState> board = _logicBoard.board;
         Matrix<bool> h_borders = _logicBoard.horizontal_borders;

@@ -8,13 +8,13 @@ public class Node
     public readonly Turn? turn;
 
     Func<Board, float> EvaluationFunction;
-    Func<List<(Node, float)>, List<Node>> PruningFunction;
+    Func<List<(Node, float)>, int, List<Node>> PruningFunction;
 
-    public readonly int? depth = null;
+    public readonly int depth;
     public List<Node> children = new List<Node>();
     private float? score = null;
 
-    public Node(Board board, Turn? turn, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, List<Node>> PruningFunction, int? depth = null)
+    public Node(Board board, Turn? turn, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, int, List<Node>> PruningFunction, int depth = 0)
     {
         this.board = board;
         this.turn = turn;
@@ -37,7 +37,7 @@ public class Node
             float s = n.Score();
             scored_nodes.Add((n, s));
         }
-        List<Node> children = PruningFunction(scored_nodes);
+        List<Node> children = PruningFunction(scored_nodes, depth);
         this.children = children;
         score = null;
         return children;

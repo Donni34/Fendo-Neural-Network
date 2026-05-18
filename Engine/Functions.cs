@@ -18,9 +18,9 @@ public static class Heuristics
 
         for (int i = 0; i < board.size; i++) for (int j = 0; j < board.size; j++)
         {
-            if (region1[i, j]) count_region1++;
+            if (region1[i, j] && !region2[i, j]) count_region1++;
             else if (vision1[i, j]) count_vision1++;
-            if (region2[i, j]) count_region2++;
+            if (region2[i, j] && !region1[i, j]) count_region2++;
             else if (vision2[i, j]) count_vision2++;
         }
 
@@ -28,16 +28,28 @@ public static class Heuristics
         return score;
     }
 
-    public static List<Node> TopPercentagePruning(List<(Node node, float score)> scored_nodes, float percentage)
+    public static List<Node> TopPercentagePruning(List<(Node node, float score)> scored_nodes, float r)
     {
         scored_nodes.Sort((a, b) => b.score.CompareTo(a.score));
         List<Node> nodes = scored_nodes.Select(sn => sn.node).ToList();
 
-        int count = (int)Math.Ceiling(scored_nodes.Count * percentage);
+        int count = (int)Math.Ceiling(scored_nodes.Count * r);
         count = Math.Max(count, nodes.Any() ? 1 : 0);
 
         nodes = nodes.Take(count).ToList();
         return nodes;
+    }
+
+    public static List<Node> GeometricPruning(List<(Node, float)> scored_nodes, float r, float a, int depth)
+    {
+        return TopPercentagePruning(scored_nodes, r * (float)Math.Pow(a, depth));
+    }
+
+    public static float BasicEval(Board board)
+    {
+        Func<int, float> weight_vision = a => (float)a;
+        Func<int, float> weight_region = a => (float)2 * a;
+        return VisionBasedEvaluation(board, weight_vision, weight_region);
     }
 }
 
