@@ -21,35 +21,33 @@ public class BreadthSearch
         List<Node>[] search_layers = new List<Node>[depth+1];
         Func<Board, float> eval = b => (float)Math.Pow(-1, (byte)board.active_player) * EvaluationFunction(b);
         Node root = new Node(board, null, EvaluationFunction, PruningFunction, depth: 0);
-        search_layers[0] = new List<Node> { root };
+        List<Node> current_layer = new List<Node>() { root };
 
         for (int i = 0; i < depth; i++)
         {
-            Console.WriteLine($"Building layer {i + 1}");
-            List<Node> new_layer = new();
-            foreach(Node node in search_layers[i])
+            int estimatedSize = current_layer.Count * 20;
+            Dictionary<Board, Node> uniqueNodes = new(estimatedSize);
+
+            foreach (Node node in current_layer)
             {
                 List<Node> new_children = node.MakeChildren();
-                if (new_layer.Count == 0)
-                {
-                    new_layer.AddRange(new_children);
-                    continue;
-                }
-                bool copy;
+
                 for (int j = 0; j < new_children.Count; j++)
                 {
-                    copy = false;
-                    foreach (Node child in new_layer) if (new_children[j].Equals(child))
+                    Node child = new_children[j];
+
+                    if (uniqueNodes.TryGetValue(child.board, out Node existingNode))
                     {
-                        node.ReplaceChild(j, child);
-                        copy = true;
-                        break;
+                        node.ReplaceChild(j, existingNode);
                     }
-                    if (!copy) new_layer.Add(new_children[j]);
+                    else
+                    {
+                        uniqueNodes.Add(child.board, child);
+                    }
                 }
             }
-            search_layers[i + 1] = new_layer;
-            Console.WriteLine($" -> Layer {i + 1} has {new_layer.Count} Nodes.");
+            current_layer = new List<Node>(uniqueNodes.Values);
+            Console.WriteLine($" -> Layer {i + 1} has {current_layer.Count} Nodes.");
         }
         Console.WriteLine("All layers built. Start computing score:");
         return (root.Score(), root.BestChild().turn!);

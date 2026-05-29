@@ -1,5 +1,5 @@
 ﻿namespace Fendo.Logic;
-public class Board
+public class Board : IEquatable<Board>
 {
     #region Deklarationen
     public Matrix<bool> vertical_borders { get; private set; }
@@ -50,12 +50,12 @@ public class Board
     #region Verwaltung
     public Board Copy() { return new Board(size, b: board.Copy(), v_borders: vertical_borders.Copy(), h_borders: horizontal_borders.Copy()); }
 
-    public bool EqualTo(Board other_board)
+    public bool Equals(Board other_board)
     {
         return Hash == other_board.Hash && board==other_board.board;
     }
 
-    public override bool Equals(object? obj) => obj is Board other && this.EqualTo(other);
+    public override bool Equals(object? obj) => obj is Board other && this.Equals(other);
 
     public static bool operator ==(Board? left, Board? right)
     {
@@ -337,6 +337,35 @@ public class Board
         return GetVision(vision);
     }
 
+
+    private bool HorizontalVision(Matrix<bool> vision, Matrix<CellState> obstruction, Matrix<bool> borders)
+    {
+        bool activity_flag = false;
+        for (int i = 0; i < size; i++)
+        {
+            int? block_start = null;
+            bool block_active = false;
+            for (int j = 0; j < size; j++)
+            {
+                block_active |= vision[i, j];
+                if (block_start == null && (obstruction[i, j] == CellState.Empty
+                    || vision[i, j]))
+                    block_start = j;
+
+                bool stop_player = j < size - 1 && (obstruction[i, j + 1] != CellState.Empty && !vision[i, j + 1]);
+                bool stop_other = (j == size - 1 || borders[i, j + 1]);
+                if (stop_player || stop_other)
+                {
+                    if (block_active && block_start != null) for (int k = (int)block_start; k <= j; k++) { vision[i, k] = true; }
+                    block_active = false;
+                    if (stop_other) { block_start = j + 1; }
+                    if (stop_player) { block_start = j + 2; }
+                    activity_flag = true;
+                }
+            }
+        }
+        return activity_flag;
+    }
     private Matrix<bool> ObstructedVision(Matrix<bool> vision, Matrix<CellState>? obstruction = null, int depth = 2, Matrix<bool>? v_borders = null, Matrix<bool>? h_borders = null)
     {
         if (depth == 0) { return vision; }
@@ -346,33 +375,6 @@ public class Board
         h_borders ??= horizontal_borders;
 
         bool activity_flag = false;
-
-        void HorizontalVision(Matrix<bool> vision, Matrix<CellState> obstruction, Matrix<bool> borders) //muss optimiert werden, funktioniert aber glaube
-        {
-            for (int i = 0; i < size; i++)
-            { 
-                int? block_start = null;
-                bool block_active = false;
-                for (int j = 0; j < size; j++)
-                {
-                    block_active |= vision[i, j];
-                    if (block_start == null && (obstruction[i, j] == CellState.Empty 
-                        || vision[i, j])) 
-                        block_start = j;
-
-                    bool stop_player = j<size-1 && (obstruction[i, j + 1] != CellState.Empty && !vision[i, j + 1]); 
-                    bool stop_other = (j == size - 1 || borders[i, j + 1]);
-                    if (stop_player || stop_other)
-                    {
-                        if (block_active && block_start != null) for (int k = (int)block_start; k <= j; k++) { vision[i, k] = true; }
-                        block_active = false;
-                        if (stop_other) { block_start = j + 1; }
-                        if (stop_player) { block_start = j + 2; }
-                        activity_flag = true;
-                    }
-                }
-            }
-        }
 
         Matrix<bool> horizontal_vision = vision.Copy();
         Matrix<bool> vertical_vision = vision.Copy();
@@ -384,7 +386,7 @@ public class Board
             changed = false;
             k++;
 
-            HorizontalVision(horizontal_vision, obstruction, v_borders);
+            activity_flag |= HorizontalVision(horizontal_vision, obstruction, v_borders);
             changed |= activity_flag;
             activity_flag = false;
 
@@ -392,7 +394,7 @@ public class Board
             h_borders.Transpose();
             obstruction.Transpose();
 
-            HorizontalVision(vertical_vision, obstruction, h_borders);
+            activity_flag |= HorizontalVision(vertical_vision, obstruction, h_borders);
             changed |= activity_flag;
             activity_flag = false;
 
