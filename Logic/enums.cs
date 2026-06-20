@@ -83,6 +83,3 @@ public static class PlayerExtensions
         return false;
     }
 }
-
-
-
