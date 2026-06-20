@@ -20,4 +20,15 @@ public static class BitUtils
         ulong isolatedBit = (ulong)((long)v & -(long)v);
         return TrailingZeroTable[(isolatedBit * 0x03f79d71b4cb0a89UL) >> 58];
     }
+
+    public static int NonZeroCount(ulong n)
+    {
+        int count = 0;
+        while (n != 0)
+        {
+            count++;
+            n &= n - 1;
+        }
+        return count;
+    }
 }

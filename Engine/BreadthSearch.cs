@@ -6,10 +6,10 @@ namespace Fendo.Engine;
 
 public class BreadthSearch
 {
-    Board board;
-    Func<Board, float> EvaluationFunction;
+    BitBoard7x7 board;
+    Func<BitBoard7x7, float> EvaluationFunction;
     Func<List<(Node, float)>, int, List<Node>> PruningFunction;
-    public BreadthSearch(Board board, Func<Board, float> EvaluationFunction, Func<List<(Node, float)>, int, List<Node>> PruningFunction)
+    public BreadthSearch(BitBoard7x7 board, Func<BitBoard7x7, float> EvaluationFunction, Func<List<(Node, float)>, int, List<Node>> PruningFunction)
     {
         this.board = board;
         this.EvaluationFunction = EvaluationFunction;
@@ -19,14 +19,14 @@ public class BreadthSearch
     public (float, Turn) Evaluate(int depth)
     {
         List<Node>[] search_layers = new List<Node>[depth+1];
-        Func<Board, float> eval = b => (float)Math.Pow(-1, (byte)board.active_player) * EvaluationFunction(b);
+        Func<BitBoard7x7, float> eval = b => (float)Math.Pow(-1, (byte)board.active_player) * EvaluationFunction(b);
         Node root = new Node(board, null, EvaluationFunction, PruningFunction, depth: 0);
         List<Node> current_layer = new List<Node>() { root };
 
         for (int i = 0; i < depth; i++)
         {
             int estimatedSize = current_layer.Count * 20;
-            Dictionary<Board, Node> uniqueNodes = new(estimatedSize);
+            Dictionary<BitBoard7x7, Node> uniqueNodes = new(estimatedSize);
 
             foreach (Node node in current_layer)
             {
@@ -50,6 +50,6 @@ public class BreadthSearch
             Console.WriteLine($" -> Layer {i + 1} has {current_layer.Count} Nodes.");
         }
         Console.WriteLine("All layers built. Start computing score:");
-        return (root.Score(), root.BestChild().turn!);
+        return (root.Score(), root.BestChild().turn.Value);
     }
 }

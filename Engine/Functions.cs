@@ -4,27 +4,23 @@ namespace Fendo.Engine;
 
 public static class Heuristics
 {
-    public static float VisionBasedEvaluation(Board board, Func<int, float> weight_vision, Func<int, float> weight_region)
+    public static float VisionBasedEvaluation(BitBoard7x7 board, Func<int, float> weight_vision, Func<int, float> weight_region)
     {
-        Matrix<bool> vision1 = board.GetVision(Player.One);
-        Matrix<bool> vision2 = board.GetVision(Player.Two);
-        Matrix<bool> region1 = board.GetRegion(Player.One);
-        Matrix<bool> region2 = board.GetRegion(Player.Two);
+        ulong vision1 = board.GetVision(Player.One);
+        ulong vision2 = board.GetVision(Player.Two);
+        ulong region1 = board.GetRegion(Player.One);
+        ulong region2 = board.GetRegion(Player.Two);
+        ulong region_mask = ~(region1 & region2);
 
-        int count_vision1 = 0;
-        int count_vision2 = 0;
-        int count_region1 = 0;
-        int count_region2 = 0;
+        int count_vision1 = BitUtils.NonZeroCount(vision1 & region_mask);
+        int count_vision2 = BitUtils.NonZeroCount(vision2 & region_mask);
+        int count_region1 = BitUtils.NonZeroCount(region1);
+        int count_region2 = BitUtils.NonZeroCount(region2);
 
-        for (int i = 0; i < board.size; i++) for (int j = 0; j < board.size; j++)
-        {
-            if (region1[i, j] && !region2[i, j]) count_region1++;
-            else if (vision1[i, j]) count_vision1++;
-            if (region2[i, j] && !region1[i, j]) count_region2++;
-            else if (vision2[i, j]) count_vision2++;
-        }
+        float region_score = weight_region(count_region1) - weight_region(count_region2);
+        if ((region1 & region2) == 0) return region_score > 0 ? 999999 : -999999;
 
-        float score = weight_vision(count_vision1) - weight_vision(count_vision2) + weight_region(count_region1) - weight_region(count_region2);
+        float score = region_score + weight_vision(count_vision1) - weight_vision(count_vision2);
         return score;
     }
 
@@ -45,7 +41,7 @@ public static class Heuristics
         return TopPercentagePruning(scored_nodes, r * (float)Math.Pow(a, depth));
     }
 
-    public static float BasicEval(Board board)
+    public static float BasicEval(BitBoard7x7 board)
     {
         Func<int, float> weight_vision = a => (float)a;
         Func<int, float> weight_region = a => (float)2 * a;
