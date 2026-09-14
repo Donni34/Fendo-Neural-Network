@@ -260,6 +260,7 @@ public class BitBoard7x7
         ulong temp_v = vertical_walls;
         ulong r1 = 0, r2 = 0; // r1 = Ziel-Region der Figur, r2 = Abgespaltene Region
         int t = turn.To;
+        int t_shift;
 
         // 2. Wände temporär setzen und Out-Of-Bounds verhindern
         switch (turn.Type)
@@ -267,28 +268,28 @@ public class BitBoard7x7
             case Border.North:
                 if (t < 8 || HasBit(temp_h, t)) return false; // Nicht am oberen Rand oder auf anderer Wand
                 temp_h |= Bit(t);
-                r1 = GetRegion(Bit(t), temp_h, temp_v);
-                r2 = GetRegion(Bit(t - 8), temp_h, temp_v);
+                t_shift = t - 8;
                 break;
             case Border.South:
                 if (t >= 48 || HasBit(temp_h, t + 8)) return false; // 48 = Start der untersten Reihe
                 temp_h |= Bit(t + 8);
-                r1 = GetRegion(Bit(t), temp_h, temp_v);
-                r2 = GetRegion(Bit(t + 8), temp_h, temp_v);
+                t_shift = t + 8;
                 break;
             case Border.West:
                 if (t % 8 == 0 || HasBit(temp_v, t)) return false; // Nicht am linken Rand
                 temp_v |= Bit(t);
-                r1 = GetRegion(Bit(t), temp_h, temp_v);
-                r2 = GetRegion(Bit(t - 1), temp_h, temp_v);
+                t_shift = t - 1;
                 break;
             case Border.East:
                 if (t % 8 == 6 || HasBit(temp_v, t + 1)) return false; // Nicht am rechten Rand
                 temp_v |= Bit(t + 1);
-                r1 = GetRegion(Bit(t), temp_h, temp_v);
-                r2 = GetRegion(Bit(t + 1), temp_h, temp_v);
+                t_shift = t + 1;
                 break;
+            default: 
+                return false;
         }
+        r1 = GetRegion(Bit(t), temp_h, temp_v);
+        r2 = GetRegion(Bit(t_shift), temp_h, temp_v);
 
         // 3. same_region Check: Wenn sich r1 und r2 überschneiden, wurde das Gebiet nicht gespalten
         if ((r1 & r2) != 0) return true;
@@ -306,8 +307,6 @@ public class BitBoard7x7
         // 6. single_compl Check: Gehört das abgetrennte Gebiet exakt einem Spieler?
         bool compl_has_me = (r2 & myPieces) != 0;
         bool compl_has_opp = (r2 & oppPieces) != 0;
-
-        // Ein XOR (^) prüft, ob exakt EINE der beiden Variablen true ist (also weder 0 Spieler noch 2 Spieler)
         bool single_compl = compl_has_me ^ compl_has_opp;
 
         return single_r1 || single_compl;

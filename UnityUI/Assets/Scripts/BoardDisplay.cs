@@ -5,6 +5,7 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Threading.Tasks;
 
 public class BoardDisplay : MonoBehaviour
 {
@@ -28,7 +29,8 @@ public class BoardDisplay : MonoBehaviour
     private Player player = Player.One;
     private List<Turn> turns = new List<Turn>();
     private int counter = 0;
-    
+    private bool isAITurn = false;
+
 
     void Start()
     {
@@ -222,34 +224,7 @@ public class BoardDisplay : MonoBehaviour
 
     public void OnCellClicked(int r, int c)
     {
-        #region Alter Code für Matrix Boards
-        //if (_logicBoard.board[r, c] == player.Opponent().ToCellState())
-        //{
-        //    first_cell = null;
-        //    second_cell = null;
-        //}
-        //else if (first_cell == null)
-        //{
-        //    first_cell = (r, c);
-        //    if (_logicBoard.board[r, c] == CellState.Empty)
-        //    {
-        //        Place p = new Place(r, c, player);
-        //        MakeTurn(p);
-        //    }
-        //}
-        //else
-        //{
-        //    if (second_cell != null)
-        //    {
-        //        first_cell = null;
-        //        second_cell = null;
-        //    }
-        //    else second_cell = (r, c);
-        //}
-        //Debug.Log($"Logik: Zelle bei {first_cell} geklickt.");
-        //DebugOutput();
-        //UpdateVisuals();
-        #endregion
+        if (isAITurn) return;
 
         if (IsOccupied(bitBoard.PlayerToPieces(player.Opponent()), r, c))
         {
@@ -280,21 +255,7 @@ public class BoardDisplay : MonoBehaviour
     }
     public void OnWallClicked(int r, int c, bool isHorizontal)
     {
-        //if (first_cell is (int r1, int c1) && second_cell is (int r2, int c2))
-        //{
-        //    Border border = DetermineDirection(r2, c2, r, c, isHorizontal);
-        //    Move m = new Move(r1, c1, r2, c2, player, border);
-        //    MakeTurn(m);
-        //}
-        //else
-        //{
-        //    first_cell = null;
-        //    second_cell = null; 
-        //}
-        //string type = isHorizontal ? "Horizontal" : "Vertikal";
-        //Debug.Log($"Logik: {type} Wand bei {r}/{c} geklickt.");
-        //DebugOutput();
-        //UpdateVisuals();
+        if (isAITurn) return;
 
         if (first_cell is (int r1, int c1) && second_cell is (int r2, int c2))
         {
@@ -348,13 +309,47 @@ public class BoardDisplay : MonoBehaviour
         if (bitBoard.ValidateTurn(t))
         {
             bitBoard.MakeMove(t);
-            turns.Append(t);
+            turns.Add(t);
             player = player.Opponent();
             counter++;
         }
         first_cell = null;
         second_cell = null;
-        if (bitBoard.IsFinished()) EndGame();
+        UpdateVisuals();
+        if (bitBoard.IsFinished())
+        {
+            EndGame();
+            return;
+        }
+
+        if (GameSettings.Mode == GameMode.VsComputer && player == Player.Two)
+        {
+            TriggerAITurn();
+        }
+    }
+
+    private async void TriggerAITurn()
+    {
+        isAITurn = true;
+        Debug.Log($"KI rechnet... (Tiefe: {GameSettings.SearchDepth})");
+
+        // WICHTIG: Kopie des Boards für den Background-Thread erstellen
+        BitBoard7x7 boardCopy = bitBoard.Copy();
+
+        BreadthSearch ai = new BreadthSearch(
+            boardCopy,
+            Heuristics.BasicEval,
+            // Beispiel-Pruning: Nimmt r=0.4 (50%), a=0.6
+            (nodes, d) => Heuristics.GeometricPruning(nodes, 0.5f, 0.8f, d)
+        );
+
+        // Auf Hintergrund-Thread auslagern, damit das Spiel nicht einfriert
+        (float score, Turn bestTurn) result = await Task.Run(() => ai.Evaluate(GameSettings.SearchDepth));
+
+        Debug.Log($"KI fertig. Bewertung: {result.score}");
+
+        isAITurn = false;
+        MakeTurn(result.bestTurn); // Zug der KI ausführen
     }
 
     private void DebugOutput()
