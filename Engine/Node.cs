@@ -26,19 +26,22 @@ public class Node
 
     public List<Node> MakeChildren()
     {
-        List<Turn> turns = board.GenerateTurns();
-        List<(Node n, float s)> scored_nodes = new List<(Node n, float s)>();
-        Func<BitBoard7x7, float> child_eval = board => -EvaluationFunction(board);
+        // Kapazität vorab reservieren verhindert teures Array-Resizing unter der Haube
+        List<Turn> turns = board.GenerateTurns(new List<Turn>(40));
+        List<(Node n, float s)> scored_nodes = new List<(Node n, float s)>(turns.Count);
+
         foreach (var turn in turns)
         {
             BitBoard7x7 new_board = board.Copy();
             new_board.MakeMove(turn);
-            Node n = new Node(new_board, turn, child_eval, PruningFunction, depth: depth+1);
-            float s = n.Score();
-            scored_nodes.Add((n, s));
+
+            // Kein neues Lambda mehr! Die Funktion wird direkt durchgereicht.
+            Node n = new Node(new_board, turn, EvaluationFunction, PruningFunction, depth: depth + 1);
+            scored_nodes.Add((n, n.Score()));
         }
-        List<Node> children = PruningFunction(scored_nodes, depth);
-        this.children = children;
+
+        // vorher war hier List<Node> children
+        children = PruningFunction(scored_nodes, depth);
         score = null;
         return children;
     }

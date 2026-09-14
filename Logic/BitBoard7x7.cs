@@ -14,7 +14,7 @@ public static class BoardMasks
     public const ulong InitialPlayer2 = 1UL << (3 + 6 * 8);
 }
 
-public class BitBoard7x7
+public struct BitBoard7x7 : IEquatable<BitBoard7x7>
 {
     #region Initialisierungen und Konstruktor
     public ulong vertical_walls { get; private set; }
@@ -30,6 +30,16 @@ public class BitBoard7x7
 
     private static readonly Border[] AllDirections = [Border.North, Border.South, Border.East, Border.West];
 
+    public BitBoard7x7()
+    {
+        player1 = BoardMasks.InitialPlayer1;
+        player2 = BoardMasks.InitialPlayer2;
+        horizontal_walls = 0;
+        vertical_walls = 0;
+        active_player = Player.One; // Structs erfordern, dass alle Felder zugewiesen werden!
+        Hash = Zobrist.GetInitialHash();
+    }
+
     public BitBoard7x7(ulong p1, ulong p2, ulong hwalls, ulong vwalls, Player player)
     {
         player1 = p1;
@@ -38,15 +48,6 @@ public class BitBoard7x7
         vertical_walls = vwalls;
         active_player = player;
         Hash = Zobrist.Hash(this);
-    }
-
-    public BitBoard7x7()
-    {
-        player1 = BoardMasks.InitialPlayer1;
-        player2 = BoardMasks.InitialPlayer2;
-        horizontal_walls = 0;
-        vertical_walls = 0;
-        Hash = Zobrist.GetInitialHash();
     }
 
     public override int GetHashCode() => (int)Hash;
@@ -63,7 +64,7 @@ public class BitBoard7x7
             && this.active_player == board.active_player;
     }
 
-    public BitBoard7x7 Copy() => new BitBoard7x7(player1, player2, horizontal_walls, vertical_walls, active_player);
+    public BitBoard7x7 Copy() => this;
     #endregion
 
     #region Basics
@@ -171,36 +172,84 @@ public class BitBoard7x7
     public static ulong ShiftLeft(ulong pieces, ulong walls) => ((pieces & ~walls) >> 1) & BoardMasks.ValidArea;
     public static ulong ShiftDown(ulong pieces, ulong walls) => ((pieces << 8) & ~walls) & BoardMasks.ValidArea;
     public static ulong ShiftUp(ulong pieces, ulong walls) => ((pieces & ~walls) >> 8) & BoardMasks.ValidArea;
-    #endregion 
+    #endregion
 
     #region Vision
-    private ulong GetVisionTo(ulong origin, ulong obstructions, ulong walls, Border b)
-    {
-        ulong vision = 0;
-        ulong ray = origin;
-        for (int i = 0; i < 6; i++)
-        {
-            ray = b switch
-            {
-                Border.North => ShiftUp(ray, walls),
-                Border.South => ShiftDown(ray, walls),
-                Border.West => ShiftLeft(ray, walls),
-                Border.East => ShiftRight(ray, walls),
-                _ => 0,
-            };
-            ray &= ~obstructions;
-            if (ray == 0) break;
-            vision |= ray;
-        }
-        return vision;
-    }
+
+    #region alte Vision Methode
+    //private ulong GetVisionTo(ulong origin, ulong obstructions, ulong walls, Border b)
+    //{
+    //    ulong vision = 0;
+    //    ulong ray = origin;
+    //    for (int i = 0; i < 6; i++)
+    //    {
+    //        ray = b switch
+    //        {
+    //            Border.North => ShiftUp(ray, walls),
+    //            Border.South => ShiftDown(ray, walls),
+    //            Border.West => ShiftLeft(ray, walls),
+    //            Border.East => ShiftRight(ray, walls),
+    //            _ => 0,
+    //        };
+    //        ray &= ~obstructions;
+    //        if (ray == 0) break;
+    //        vision |= ray;
+    //    }
+    //    return vision;
+    //}
+
+    //public ulong GetVision(ulong origin, ulong obstructions, ulong hwalls, ulong vwalls, int depth = 2)
+    //{
+    //    if (depth <= 0) return origin;
+    //    ulong horizontal_vision = GetVisionTo(origin, obstructions, vwalls, Border.East) | GetVisionTo(origin, obstructions, vwalls, Border.West);
+    //    ulong vertical_vision = GetVisionTo(origin, obstructions, hwalls, Border.North) | GetVisionTo(origin, obstructions, hwalls, Border.South);
+    //    ulong vision = horizontal_vision | vertical_vision | origin;
+    //    return vision == origin ? vision : GetVision(vision, obstructions, hwalls, vwalls, depth - 1);
+    //}
+    #endregion
 
     public ulong GetVision(ulong origin, ulong obstructions, ulong hwalls, ulong vwalls, int depth = 2)
     {
         if (depth <= 0) return origin;
-        ulong horizontal_vision = GetVisionTo(origin, obstructions, vwalls, Border.East) | GetVisionTo(origin, obstructions, vwalls, Border.West);
-        ulong vertical_vision = GetVisionTo(origin, obstructions, hwalls, Border.North) | GetVisionTo(origin, obstructions, hwalls, Border.South);
-        ulong vision = horizontal_vision | vertical_vision | origin;
+
+        // --- WEST ---
+        ulong w = ShiftLeft(origin, vwalls) & ~obstructions;
+        ulong h_vis = w;
+        w = ShiftLeft(w, vwalls) & ~obstructions; h_vis |= w;
+        w = ShiftLeft(w, vwalls) & ~obstructions; h_vis |= w;
+        w = ShiftLeft(w, vwalls) & ~obstructions; h_vis |= w;
+        w = ShiftLeft(w, vwalls) & ~obstructions; h_vis |= w;
+        w = ShiftLeft(w, vwalls) & ~obstructions; h_vis |= w;
+
+        // --- EAST ---
+        ulong e = ShiftRight(origin, vwalls) & ~obstructions;
+        h_vis |= e;
+        e = ShiftRight(e, vwalls) & ~obstructions; h_vis |= e;
+        e = ShiftRight(e, vwalls) & ~obstructions; h_vis |= e;
+        e = ShiftRight(e, vwalls) & ~obstructions; h_vis |= e;
+        e = ShiftRight(e, vwalls) & ~obstructions; h_vis |= e;
+        e = ShiftRight(e, vwalls) & ~obstructions; h_vis |= e;
+
+        // --- NORTH ---
+        ulong n = ShiftUp(origin, hwalls) & ~obstructions;
+        ulong v_vis = n;
+        n = ShiftUp(n, hwalls) & ~obstructions; v_vis |= n;
+        n = ShiftUp(n, hwalls) & ~obstructions; v_vis |= n;
+        n = ShiftUp(n, hwalls) & ~obstructions; v_vis |= n;
+        n = ShiftUp(n, hwalls) & ~obstructions; v_vis |= n;
+        n = ShiftUp(n, hwalls) & ~obstructions; v_vis |= n;
+
+        // --- SOUTH ---
+        ulong s = ShiftDown(origin, hwalls) & ~obstructions;
+        v_vis |= s;
+        s = ShiftDown(s, hwalls) & ~obstructions; v_vis |= s;
+        s = ShiftDown(s, hwalls) & ~obstructions; v_vis |= s;
+        s = ShiftDown(s, hwalls) & ~obstructions; v_vis |= s;
+        s = ShiftDown(s, hwalls) & ~obstructions; v_vis |= s;
+        s = ShiftDown(s, hwalls) & ~obstructions; v_vis |= s;
+
+        ulong vision = h_vis | v_vis | origin;
+
         return vision == origin ? vision : GetVision(vision, obstructions, hwalls, vwalls, depth - 1);
     }
 
@@ -219,9 +268,26 @@ public class BitBoard7x7
     #endregion
 
     #region Regions
+    //public ulong GetRegion(ulong origin, ulong hwalls, ulong vwalls)
+    //{
+    //    return GetVision(origin, 0UL, hwalls, vwalls, 49);
+    //}
+
     public ulong GetRegion(ulong origin, ulong hwalls, ulong vwalls)
     {
-        return GetVision(origin, 0UL, hwalls, vwalls, 49);
+        ulong region = origin;
+        while (true)
+        {
+            ulong next = region
+                       | (((region << 1) & ~vwalls) & BoardMasks.ValidArea)
+                       | (((region & ~vwalls) >> 1) & BoardMasks.ValidArea)
+                       | (((region << 8) & ~hwalls) & BoardMasks.ValidArea)
+                       | (((region & ~hwalls) >> 8) & BoardMasks.ValidArea);
+
+            if (next == region) break;
+            region = next;
+        }
+        return region;
     }
 
     public ulong GetRegion(Player p) => GetRegion(PlayerToPieces(p), horizontal_walls, vertical_walls);
@@ -288,11 +354,12 @@ public class BitBoard7x7
             default: 
                 return false;
         }
-        r1 = GetRegion(Bit(t), temp_h, temp_v);
-        r2 = GetRegion(Bit(t_shift), temp_h, temp_v);
 
         // 3. same_region Check: Wenn sich r1 und r2 überschneiden, wurde das Gebiet nicht gespalten
-        if ((r1 & r2) != 0) return true;
+        r1 = GetRegion(Bit(t), temp_h, temp_v);
+        if (HasBit(r1, t_shift)) return true;
+
+        r2 = GetRegion(Bit(t_shift), temp_h, temp_v);
         if ((r1 & AllPieces) == 0 || (r2 & AllPieces) == 0) return false;
 
         // 4. Figuren temporär simulieren (Die ziehende Figur befindet sich nun im Geiste auf turn.To)
