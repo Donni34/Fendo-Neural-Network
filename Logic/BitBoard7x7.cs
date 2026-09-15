@@ -22,6 +22,7 @@ public struct BitBoard7x7 : IEquatable<BitBoard7x7>
     public ulong player1 { get; private set; }
     public ulong player2 { get; private set; }
 
+    public int max_pieces { get; private set; } = 7;
     public ulong AllPieces => player1 | player2;
 
     public Player active_player { get; private set; } = Player.One;
@@ -312,7 +313,7 @@ public struct BitBoard7x7 : IEquatable<BitBoard7x7>
                 bool wall_valid = ValidateWallPlacement(turn);
                 return pos0_valid && pos1_valid && wall_valid;
             default:
-                if (BitUtils.NonZeroCount(PlayerToPieces(active_player)) >= 6) return false;
+                if (BitUtils.NonZeroCount(PlayerToPieces(active_player)) >= max_pieces) return false;
                 return !HasBit(AllPieces, turn.To);
         }
     }
@@ -388,7 +389,7 @@ public struct BitBoard7x7 : IEquatable<BitBoard7x7>
         ulong vision = GetVision(current_pieces, obstructions, horizontal_walls, vertical_walls);
         ulong possible_places;
         #region Place
-        if (BitUtils.NonZeroCount(PlayerToPieces(active_player)) < 7)
+        if (BitUtils.NonZeroCount(PlayerToPieces(active_player)) < max_pieces)
         {
             possible_places = vision & ~obstructions;
             while (possible_places != 0)
@@ -398,8 +399,8 @@ public struct BitBoard7x7 : IEquatable<BitBoard7x7>
                 possible_places &= possible_places - 1;
             }
         }
-        
         #endregion
+
         #region Move
         while (current_pieces != 0)
         {

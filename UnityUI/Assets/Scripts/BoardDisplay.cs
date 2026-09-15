@@ -166,7 +166,7 @@ public class BoardDisplay : MonoBehaviour
         //}
         #endregion
 
-        Debug.Log($"Aktuelle Bewertung: {Heuristics.BasicEval(bitBoard)}");
+        Debug.Log($"Aktuelle Bewertung: {Heuristics.EvaluationToyModel(bitBoard)}");
 
         ulong vision = first_cell is (int, int) pos ? bitBoard.GetVisionFrom(pos) : bitBoard.GetVision(player);
 
@@ -249,8 +249,8 @@ public class BoardDisplay : MonoBehaviour
             }
             else second_cell = (r, c);
         }
-        Debug.Log($"Logik: Zelle bei {first_cell} geklickt.");
-        DebugOutput();
+        //Debug.Log($"Logik: Zelle bei {first_cell} geklickt.");
+        //DebugOutput();
         UpdateVisuals();
     }
     public void OnWallClicked(int r, int c, bool isHorizontal)
@@ -269,8 +269,8 @@ public class BoardDisplay : MonoBehaviour
             second_cell = null;
         }
         string type = isHorizontal ? "Horizontal" : "Vertikal";
-        Debug.Log($"Logik: {type} Wand bei {r}/{c} geklickt.");
-        DebugOutput();
+        //Debug.Log($"Logik: {type} Wand bei {r}/{c} geklickt.");
+        //DebugOutput();
         UpdateVisuals();
     }
 
@@ -332,24 +332,27 @@ public class BoardDisplay : MonoBehaviour
     {
         isAITurn = true;
         Debug.Log($"KI rechnet... (Tiefe: {GameSettings.SearchDepth})");
-
-        // WICHTIG: Kopie des Boards für den Background-Thread erstellen
         BitBoard7x7 boardCopy = bitBoard.Copy();
 
-        BreadthSearch ai = new BreadthSearch(
-            boardCopy,
-            Heuristics.BasicEval,
-            // Beispiel-Pruning: Nimmt r=0.4 (50%), a=0.6
-            (nodes, d) => Heuristics.GeometricPruning(nodes, 0.5f, 0.8f, d)
-        );
+        //BreadthSearch ai = new BreadthSearch(
+        //    boardCopy,
+        //    Heuristics.BasicEval,
+        //    // Beispiel-Pruning: Nimmt r=0.4 (50%), a=0.6
+        //    (nodes, d) => Heuristics.GeometricPruning(nodes, 0.5f, 0.8f, d)
+        //);
 
-        // Auf Hintergrund-Thread auslagern, damit das Spiel nicht einfriert
-        (float score, Turn bestTurn) result = await Task.Run(() => ai.Evaluate(GameSettings.SearchDepth));
+        //// Auf Hintergrund-Thread auslagern, damit das Spiel nicht einfriert
+        //(float score, Turn bestTurn) result = await Task.Run(() => ai.Evaluate(GameSettings.SearchDepth));
 
-        Debug.Log($"KI fertig. Bewertung: {result.score}");
+
+        FendoEngine engine = new FendoEngine(SearchType.AlphaBeta, boardCopy);
+
+        Turn bestTurn = await Task.Run(() => engine.BestTurn(4));
+
+        //Debug.Log($"KI fertig. Bewertung: {result.score}");
 
         isAITurn = false;
-        MakeTurn(result.bestTurn); // Zug der KI ausführen
+        MakeTurn(bestTurn); // Zug der KI ausführen
     }
 
     private void DebugOutput()
