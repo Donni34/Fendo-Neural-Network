@@ -269,27 +269,27 @@ public struct BitBoard7x7 : IEquatable<BitBoard7x7>
     #endregion
 
     #region Regions
-    //public ulong GetRegion(ulong origin, ulong hwalls, ulong vwalls)
-    //{
-    //    return GetVision(origin, 0UL, hwalls, vwalls, 49);
-    //}
-
-    public ulong GetRegion(ulong origin, ulong hwalls, ulong vwalls)
+    public ulong GetRegionObstructed(ulong origin, ulong hwalls, ulong vwalls, ulong obstructions)
     {
         ulong region = origin;
+        ulong valid_mask = BoardMasks.ValidArea & ~obstructions;
+
         while (true)
         {
             ulong next = region
-                       | (((region << 1) & ~vwalls) & BoardMasks.ValidArea)
-                       | (((region & ~vwalls) >> 1) & BoardMasks.ValidArea)
-                       | (((region << 8) & ~hwalls) & BoardMasks.ValidArea)
-                       | (((region & ~hwalls) >> 8) & BoardMasks.ValidArea);
+                       | (((region << 1) & ~vwalls) & valid_mask)
+                       | (((region & ~vwalls) >> 1) & valid_mask)
+                       | (((region << 8) & ~hwalls) & valid_mask)
+                       | (((region & ~hwalls) >> 8) & valid_mask);
 
             if (next == region) break;
             region = next;
         }
         return region;
     }
+
+    public ulong GetRegion(ulong origin, ulong hwalls, ulong vwalls)
+        => GetRegionObstructed(origin, hwalls, vwalls, 0UL);
 
     public ulong GetRegion(Player p) => GetRegion(PlayerToPieces(p), horizontal_walls, vertical_walls);
 
@@ -380,7 +380,7 @@ public struct BitBoard7x7 : IEquatable<BitBoard7x7>
         return single_r1 || single_compl;
     }
 
-    public List<Turn> GenerateTurns(List<Turn>? turns = null)
+    public List<Turn> GenerateLegalTurns(List<Turn>? turns = null)
     {
         turns ??= new List<Turn>();
         turns.Clear();
@@ -413,6 +413,49 @@ public struct BitBoard7x7 : IEquatable<BitBoard7x7>
                 {
                     Turn turn = new Turn(direction, i, j);
                     if (ValidateWallPlacement(turn)) turns.Add(turn);
+                }
+                possible_places &= possible_places - 1;
+            }
+            current_pieces &= current_pieces - 1;
+        }
+        #endregion
+        return turns;
+    }
+
+    public List<Turn> GeneratePseudoLegalTurns(List<Turn>? turns = null)
+    {
+        turns ??= new List<Turn>();
+        turns.Clear();
+        ulong current_pieces = PlayerToPieces(active_player);
+        ulong obstructions = AllPieces;
+        ulong vision = GetVision(current_pieces, obstructions, horizontal_walls, vertical_walls);
+        ulong possible_places;
+        #region Place
+        if (BitUtils.NonZeroCount(PlayerToPieces(active_player)) < max_pieces)
+        {
+            possible_places = vision & ~obstructions;
+            while (possible_places != 0)
+            {
+                int i = BitUtils.TrailingZeroCount(possible_places);
+                turns.Add(new Turn(Border.NaB, 0, i));
+                possible_places &= possible_places - 1;
+            }
+        }
+        #endregion
+
+        #region Move
+        while (current_pieces != 0)
+        {
+            int i = BitUtils.TrailingZeroCount(current_pieces);
+            possible_places = GetVision(Bit(i), obstructions, horizontal_walls, vertical_walls);
+            while (possible_places != 0)
+            {
+                int j = BitUtils.TrailingZeroCount(possible_places);
+                foreach (Border direction in AllDirections)
+                {
+                    Turn turn = new Turn(direction, i, j);
+                    //if (ValidateWallPlacement(turn)) turns.Add(turn);
+                    turns.Add(turn);
                 }
                 possible_places &= possible_places - 1;
             }

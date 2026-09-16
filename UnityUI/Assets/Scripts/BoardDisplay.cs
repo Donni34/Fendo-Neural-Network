@@ -2,10 +2,11 @@ using Fendo.Engine;
 using Fendo.Logic;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using System.Threading.Tasks;
+using UnityEngine.SocialPlatforms.Impl;
 
 public class BoardDisplay : MonoBehaviour
 {
@@ -166,8 +167,6 @@ public class BoardDisplay : MonoBehaviour
         //}
         #endregion
 
-        Debug.Log($"Aktuelle Bewertung: {Heuristics.EvaluationToyModel(bitBoard)}");
-
         ulong vision = first_cell is (int, int) pos ? bitBoard.GetVisionFrom(pos) : bitBoard.GetVision(player);
 
         for (int i = 0; i < 7; i++) for (int j = 0; j < 7; j++)
@@ -312,6 +311,9 @@ public class BoardDisplay : MonoBehaviour
             turns.Add(t);
             player = player.Opponent();
             counter++;
+            float score = Heuristics.EvaluationToyModel(bitBoard);
+            score = bitBoard.active_player == Player.One ? score : -score;
+            Debug.Log($"Aktuelle Bewertung: {score}");
         }
         first_cell = null;
         second_cell = null;
@@ -331,7 +333,7 @@ public class BoardDisplay : MonoBehaviour
     private async void TriggerAITurn()
     {
         isAITurn = true;
-        Debug.Log($"KI rechnet... (Tiefe: {GameSettings.SearchDepth})");
+        //Debug.Log($"KI rechnet... (Tiefe: {GameSettings.SearchDepth})");
         BitBoard7x7 boardCopy = bitBoard.Copy();
 
         //BreadthSearch ai = new BreadthSearch(

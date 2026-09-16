@@ -27,7 +27,7 @@ public class Node
     public List<Node> MakeChildren()
     {
         // Kapazität vorab reservieren verhindert teures Array-Resizing unter der Haube
-        List<Turn> turns = board.GenerateTurns(new List<Turn>(40));
+        List<Turn> turns = board.GenerateLegalTurns(new List<Turn>(40));
         List<(Node n, float s)> scored_nodes = new List<(Node n, float s)>(turns.Count);
 
         foreach (var turn in turns)
